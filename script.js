@@ -3,6 +3,7 @@ let processedData = [];
 let currentFilter = "TODOS";
 
 const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];
+const AUTO_REFRESH_MS = 2 * 60 * 60 * 1000;
 
 // ── Toggle filtros ───────────────────────────────────────────────
 (function initToggle() {
@@ -99,6 +100,7 @@ async function loadHostedWorkbook() {
 
 window.addEventListener("DOMContentLoaded", async () => {
   await loadHostedWorkbook();
+  window.setInterval(loadHostedWorkbook, AUTO_REFRESH_MS);
 });
 
 async function handleExcelUpload(event) {
