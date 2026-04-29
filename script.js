@@ -2,6 +2,8 @@ let rawData = [];
 let processedData = [];
 let currentFilter = "TODOS";
 
+const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];
+
 // ── Toggle filtros ───────────────────────────────────────────────
 (function initToggle() {
   const btn     = document.getElementById("toggleFiltersBtn");
@@ -69,6 +71,35 @@ if (els.dayFilter) els.dayFilter.addEventListener("change", handleDateFilterChan
 if (els.monthFilter) els.monthFilter.addEventListener("change", handleDateFilterChange);
 if (els.yearFilter) els.yearFilter.addEventListener("change", handleDateFilterChange);
 if (els.searchInput) els.searchInput.addEventListener("input", render);
+
+async function loadHostedWorkbook() {
+  for (const path of AUTO_DATA_PATHS) {
+    try {
+      const response = await fetch(`${path}?v=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) continue;
+      const buffer = await response.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array", cellDates: true, bookVBA: false });
+      const sheetName = workbook.SheetNames.includes("Embarques")
+        ? "Embarques"
+        : workbook.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
+      if (!rows.length) continue;
+
+      loadRows(rows, "latest.xlsx", sheetName);
+      if (els.lastUpdateText) {
+        els.lastUpdateText.textContent = `Actualizado: ${new Date().toLocaleString("es-PE")} (auto)`;
+      }
+      return true;
+    } catch (_error) {
+      // Intentar siguiente ruta
+    }
+  }
+  return false;
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadHostedWorkbook();
+});
 
 async function handleExcelUpload(event) {
   const file = event.target.files[0];
