@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__groq__groq_chat",
+      "mcp__gemini__analyze_media",
+      "mcp__openrouter__openrouter_chat",
+      "mcp__gemini-chat__ping",
+      "mcp__gemini-chat__ask-gemini",
+      "mcp__gemini__gemini_chat",
+      "Bash(npm --version)",
+      "Bash(npm install *)",
+      "PowerShell(npm install -g @google/gemini-cli 2>&1)",
+      "PowerShell(gemini --version)"
+    ]
+  }
+}

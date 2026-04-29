@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DINET | Dashboard Picking Web</title>
+  <meta
+    name="description"
+    content="Dashboard operativo para revisar el estatus de picking DINET desde archivos Excel."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Sora:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="top-line"></div>
+  
+  <div class="header">
+    <div class="brand">
+      <div class="logo">D</div>
+      <div>
+        <div class="title">DINET · Estatus Picking / Despachos Unilever</div>
+        <div id="lastUpdateText" class="sub">Huachipa · Carga un Excel para iniciar el análisis.</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <input id="excelInput" type="file" accept=".xlsx,.xls,.xlsm,.csv" hidden />
+      <button id="toggleFiltersBtn" type="button" class="pill pill-toggle" title="Mostrar / ocultar filtros">
+        <svg id="toggleChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        <span id="toggleFiltersLabel">Ocultar filtros</span>
+      </button>
+      <div class="pill pill-live"><span class="dot-live"></span> EN VIVO</div>
+    </div>
+  </div>
+
+  <div id="filterSection">
+    <div class="tabs">
+      <button class="tab active" data-filter="TODOS" type="button"><span class="tab-dot blue"></span>TODOS <span id="tabCountTodos" class="badge b-blue">0</span></button>
+      <button class="tab local" data-filter="LOCAL" type="button"><span class="tab-dot green"></span>LOCAL <span id="tabCountLocal" class="badge b-green">0</span></button>
+      <button class="tab prov" data-filter="PROVINCIA" type="button"><span class="tab-dot amber"></span>PROVINCIA <span id="tabCountProvincia" class="badge b-amber">0</span></button>
+    </div>
+
+    <div class="filter-bar hidden" id="filterBar">
+    <div class="filter-lbl">Filtros temporales:</div>
+    <select id="dayFilter" class="filter-select"><option value="TODOS">Día: Todos</option></select>
+    <select id="monthFilter" class="filter-select"><option value="TODOS">Mes: Todos</option></select>
+    <select id="yearFilter" class="filter-select"><option value="TODOS">Año: Todos</option></select>
+    <input type="text" id="searchInput" class="search-box" placeholder="Buscar destino o DT..." style="margin-left:auto;">
+  </div>
+  </div>
+
+  <main class="dashboard-wrap">
+
+    <section id="emptyState" class="empty-state">
+      <div class="empty-card">
+        <div style="font-size:48px; margin-bottom:16px;">📊</div>
+        <h2>Sube tu archivo Excel y obten una lectura ejecutiva del picking</h2>
+        <p>
+          El dashboard lee la hoja <strong>Embarques</strong>, normaliza columnas,
+          clasifica los registros entre <strong>LOCAL</strong> y <strong>PROVINCIA</strong>,
+          calcula avance, faltante, prioridad y genera focos de accion.
+        </p>
+        <div class="empty-actions">
+          <label for="excelInput" class="btn btn-primary btn-large">Cargar base actualizada</label>
+        </div>
+      </div>
+    </section>
+
+    <div id="dashboardContent" class="page active hidden">
+
+      <!-- Bloque operativo: velocímetros | resumen + turno | velocímetro -->
+      <div class="ops-section">
+        <div id="gaugePikingWrap" class="gauge-panel ops-gauge"></div>
+        <div class="ops-center">
+          <div id="gaugeSummaryWrap"></div>
+          <div class="panel panel-sm">
+            <div class="panel-title-row">
+              <div class="panel-title">Avance por turno</div>
+              <div class="panel-sub">Toneladas · m³ · Cajas procesadas por turno.</div>
+            </div>
+            <div id="turnoCombinadoBars"></div>
+          </div>
+        </div>
+        <div id="gaugeDespachoWrap" class="gauge-panel ops-gauge"></div>
+      </div>
+
+      <div class="main-grid">
+        <div class="panel">
+          <div class="panel-title-row">
+            <div>
+              <div id="tableTitle" class="panel-title">Detalle Dts</div>
+              <div id="tableSubtitle" class="panel-sub"></div>
+            </div>
+            <div class="tabs" style="padding: 0; gap: 8px; overflow: visible; flex-wrap: wrap;">
+              <button class="tab t-tab active" data-estado="TODOS" type="button" style="padding: 8px 12px; font-size: 0.75rem;"><span class="tab-dot blue"></span>TODOS <span id="tTabCountTodos" class="badge b-blue">0</span></button>
+              <button class="tab t-tab" data-estado="Completo" type="button" style="padding: 8px 12px; font-size: 0.75rem;"><span class="tab-dot green"></span>COMPLETO <span id="tTabCountCompleto" class="badge b-green">0</span></button>
+              <button class="tab t-tab" data-estado="En proceso" type="button" style="padding: 8px 12px; font-size: 0.75rem;"><span class="tab-dot amber"></span>EN PROCESO <span id="tTabCountProceso" class="badge b-amber">0</span></button>
+              <button class="tab t-tab" data-estado="Pendiente" type="button" style="padding: 8px 12px; font-size: 0.75rem;"><span class="tab-dot" style="background: var(--red);"></span>PENDIENTE <span id="tTabCountPendiente" class="badge b-red">0</span></button>
+            </div>
+          </div>
+          <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th># DT</th>
+                <th>Transporte</th>
+                <th>Cliente</th>
+                <th>Destino</th>
+                <th class="num">Ton</th>
+                <th class="num">m³</th>
+                <th class="num">Pedido</th>
+                <th class="num">Avance</th>
+                <th>Placa</th>
+                <th>% Avance</th>
+                <th>Stage</th>
+                <th>Rampa</th>
+                <th>Cita</th>
+                <th style="text-align:center">Estado Carga</th>
+              </tr>
+            </thead>
+            <tbody id="detailTable"></tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="data/catalogo_clientes.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
