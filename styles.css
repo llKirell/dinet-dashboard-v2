@@ -1224,3 +1224,350 @@ td { padding: 10px 8px !important; font-size: 11px !important; }
 .empty-actions .btn { padding: 10px 24px; border-radius: 99px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: 0.2s; display: inline-block; font-family: inherit; }
 .empty-actions .btn-primary { background: #1d4ed8; color: #fff; }
 .empty-actions .btn-secondary { background: #f1f5f9; color: #0f172a; margin-left: 8px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE MOBILE — 768px y 480px
+   Solo layout/UI. Sin cambios en lógica de datos.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── Header ──────────────────────────────────────────────── */
+  .header {
+    height: auto !important;
+    padding: 12px 16px !important;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .brand {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .title {
+    font-size: 13px !important;
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  .sub {
+    font-size: 10px !important;
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  .logo {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 15px !important;
+    flex-shrink: 0;
+  }
+
+  .header-actions {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .pill {
+    font-size: 10px !important;
+    padding: 4px 10px !important;
+  }
+
+  /* ── Tabs ────────────────────────────────────────────────── */
+  .tabs {
+    padding: 10px 12px 0 !important;
+    gap: 6px !important;
+    flex-wrap: wrap;
+    overflow-x: unset;
+  }
+
+  .tab {
+    padding: 8px 12px !important;
+    font-size: 11px !important;
+    flex-shrink: 0;
+  }
+
+  /* ── Filter bar ──────────────────────────────────────────── */
+  .filter-bar {
+    padding: 8px 12px 12px !important;
+    gap: 8px !important;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .filter-lbl {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  .filter-select {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+    font-size: 11px !important;
+  }
+
+  .search-box {
+    width: 100% !important;
+    margin-left: 0 !important;
+    box-sizing: border-box;
+  }
+
+  .search-box:focus {
+    width: 100% !important;
+  }
+
+  /* ── Page / Dashboard wrap ───────────────────────────────── */
+  .page {
+    padding: 10px 12px 16px !important;
+    gap: 12px !important;
+  }
+
+  .dashboard-wrap {
+    padding: 8px 10px 20px !important;
+  }
+
+  /* ── Ops section: 3 paneles → 1 columna ─────────────────── */
+  .ops-section {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .ops-gauge {
+    width: 100% !important;
+    flex: none !important;
+    min-width: 0 !important;
+  }
+
+  .ops-center {
+    width: 100% !important;
+    flex: none !important;
+    min-width: 0 !important;
+  }
+
+  .gauge-panel {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  /* Limitar altura del SVG del gauge en móvil */
+  .gauge-panel svg {
+    max-height: 130px !important;
+  }
+
+  /* ── Summary strip ───────────────────────────────────────── */
+  .summary-strip {
+    overflow-x: auto;
+  }
+
+  .summary-header,
+  .summary-row {
+    grid-template-columns: 1.4fr repeat(3, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .summary-row-label {
+    font-size: 9px !important;
+  }
+
+  .summary-cell {
+    font-size: 10px !important;
+  }
+
+  .summary-col-head {
+    font-size: 8px !important;
+  }
+
+  /* ── Panel title row: wrap en móvil ─────────────────────── */
+  .panel-title-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* Tabs internos de la tabla */
+  .panel-title-row .tabs {
+    padding: 0 !important;
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+
+  .panel-title-row .tab {
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+  }
+
+  /* ── Tabla → Cards en móvil ──────────────────────────────── */
+  .table-wrap {
+    overflow-x: unset !important;
+    max-height: none !important;
+    overflow-y: unset !important;
+  }
+
+  table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Ocultar cabecera */
+  table thead {
+    display: none !important;
+  }
+
+  /* Cada fila es una card */
+  table tbody tr {
+    display: block !important;
+    border-radius: 14px !important;
+    margin-bottom: 10px !important;
+    padding: 12px 14px !important;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(15,23,42,.04);
+    transform: none !important; /* desactiva hover translate en móvil */
+  }
+
+  table tbody tr:hover {
+    transform: none !important;
+  }
+
+  /* Indicador de criticidad como borde izquierdo en la card */
+  .row-critical { border-left: 4px solid #dc2626 !important; }
+  .row-warning  { border-left: 4px solid #d97706 !important; }
+  .row-ok       { border-left: 4px solid #16a34a !important; }
+
+  /* Quitar box-shadow de la primera celda (ya no aplica en card) */
+  table tbody tr td:first-child {
+    box-shadow: none !important;
+  }
+
+  /* Cada celda: bloque con label */
+  table tbody td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    padding: 5px 0 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    font-size: 12px !important;
+    text-align: left !important;
+    gap: 8px;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  table tbody td:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Labels por columna (nth-child) — sin tocar el JS */
+  table tbody td::before {
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #94a3b8;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  table tbody td:nth-child(1)::before  { content: "# DT"; }
+  table tbody td:nth-child(2)::before  { content: "Transporte"; }
+  table tbody td:nth-child(3)::before  { content: "Cliente"; }
+  table tbody td:nth-child(4)::before  { content: "Destino"; }
+  table tbody td:nth-child(9)::before  { content: "Placa"; }
+  table tbody td:nth-child(10)::before { content: "% Avance"; }
+  table tbody td:nth-child(14)::before { content: "Estado"; }
+
+  /* Columnas poco útiles en móvil → ocultar */
+  table tbody td:nth-child(5),   /* Ton */
+  table tbody td:nth-child(6),   /* m³ */
+  table tbody td:nth-child(7),   /* Pedido */
+  table tbody td:nth-child(8),   /* Avance (cjs) */
+  table tbody td:nth-child(11),  /* Stage */
+  table tbody td:nth-child(12),  /* Rampa */
+  table tbody td:nth-child(13)   /* Cita */
+  {
+    display: none !important;
+  }
+
+  /* Celda % Avance: mini-bar ocupa el espacio disponible */
+  .pct-cell {
+    min-width: 0 !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .pct-cell .pct-text {
+    font-size: 12px !important;
+  }
+
+  /* Estado carga centrado */
+  .carga-td {
+    justify-content: space-between !important;
+  }
+
+  .estado-grafico {
+    flex-direction: row !important;
+    gap: 6px !important;
+  }
+
+  .estado-grafico span {
+    font-size: 10px !important;
+  }
+
+  /* ── Empty state ─────────────────────────────────────────── */
+  .empty-card {
+    padding: 28px 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .empty-card h2 {
+    font-size: 16px !important;
+  }
+
+  .empty-card p {
+    font-size: 12px !important;
+  }
+}
+
+/* ── 480px: ajustes finos ─────────────────────────────────────── */
+@media (max-width: 480px) {
+
+  .header {
+    padding: 10px 12px !important;
+  }
+
+  .title {
+    font-size: 12px !important;
+  }
+
+  .tabs {
+    padding: 8px 10px 0 !important;
+  }
+
+  .tab {
+    padding: 7px 10px !important;
+    font-size: 10px !important;
+  }
+
+  .filter-select {
+    flex: 1 1 100%;
+  }
+
+  /* Paneles gauge aún más compactos */
+  .gauge-panel svg {
+    max-height: 110px !important;
+  }
+
+  .panel {
+    padding: 14px 12px !important;
+    border-radius: 16px !important;
+  }
+
+  table tbody tr {
+    padding: 10px 12px !important;
+  }
+
+  table tbody td {
+    font-size: 11px !important;
+  }
+}
