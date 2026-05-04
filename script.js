@@ -581,25 +581,30 @@ function populateDateFilters() {
   const defaultMonth = String(today.getMonth() + 1).padStart(2, "0");
   const defaultYear = String(today.getFullYear());
 
-  fillSelect(els.dayFilter, days, (value) => value, defaultDay);
-  fillSelect(els.monthFilter, months, (value) => monthName(value), defaultMonth);
-  fillSelect(els.yearFilter, years, (value) => value, defaultYear);
+  fillSelect(els.dayFilter, days, (value) => value, defaultDay, true);
+  fillSelect(els.monthFilter, months, (value) => monthName(value), defaultMonth, true);
+  fillSelect(els.yearFilter, years, (value) => value, defaultYear, true);
 
-  // Actualizar dateFilter con los valores por defecto
+  // Actualizar dateFilter con la fecha de hoy por defecto
   dateFilter = {
-    day: (defaultDay && days.includes(defaultDay)) ? defaultDay : "TODOS",
-    month: (defaultMonth && months.includes(defaultMonth)) ? defaultMonth : "TODOS",
-    year: (defaultYear && years.includes(defaultYear)) ? defaultYear : "TODOS"
+    day: defaultDay,
+    month: defaultMonth,
+    year: defaultYear
   };
 }
 
-function fillSelect(select, values, formatter, defaultValue) {
+function fillSelect(select, values, formatter, defaultValue, ensureDefaultOption = false) {
+  const normalizedValues = [...values];
+  if (ensureDefaultOption && defaultValue && !normalizedValues.includes(defaultValue)) {
+    normalizedValues.push(defaultValue);
+    normalizedValues.sort((a, b) => a.localeCompare(b));
+  }
+
   const options = ['<option value="TODOS">Todos</option>']
-    .concat(values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(formatter(value))}</option>`));
+    .concat(normalizedValues.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(formatter(value))}</option>`));
   select.innerHTML = options.join("");
 
-  // Si el valor por defecto existe en las opciones, lo selecciona; si no, selecciona "TODOS"
-  if (defaultValue && values.includes(defaultValue)) {
+  if (defaultValue && normalizedValues.includes(defaultValue)) {
     select.value = defaultValue;
   } else {
     select.value = "TODOS";
