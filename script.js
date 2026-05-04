@@ -576,16 +576,34 @@ function populateDateFilters() {
   const months = uniqueSortedValues(processedData.map((row) => row.fechaInfo.month).filter(Boolean), "asc");
   const years = uniqueSortedValues(processedData.map((row) => row.fechaInfo.year).filter(Boolean), "desc");
 
-  fillSelect(els.dayFilter, days, (value) => value);
-  fillSelect(els.monthFilter, months, (value) => monthName(value));
-  fillSelect(els.yearFilter, years, (value) => value);
+  const today = new Date();
+  const defaultDay = String(today.getDate()).padStart(2, "0");
+  const defaultMonth = String(today.getMonth() + 1).padStart(2, "0");
+  const defaultYear = String(today.getFullYear());
+
+  fillSelect(els.dayFilter, days, (value) => value, defaultDay);
+  fillSelect(els.monthFilter, months, (value) => monthName(value), defaultMonth);
+  fillSelect(els.yearFilter, years, (value) => value, defaultYear);
+
+  // Actualizar dateFilter con los valores por defecto
+  dateFilter = {
+    day: (defaultDay && days.includes(defaultDay)) ? defaultDay : "TODOS",
+    month: (defaultMonth && months.includes(defaultMonth)) ? defaultMonth : "TODOS",
+    year: (defaultYear && years.includes(defaultYear)) ? defaultYear : "TODOS"
+  };
 }
 
-function fillSelect(select, values, formatter) {
+function fillSelect(select, values, formatter, defaultValue) {
   const options = ['<option value="TODOS">Todos</option>']
     .concat(values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(formatter(value))}</option>`));
   select.innerHTML = options.join("");
-  select.value = "TODOS";
+
+  // Si el valor por defecto existe en las opciones, lo selecciona; si no, selecciona "TODOS"
+  if (defaultValue && values.includes(defaultValue)) {
+    select.value = defaultValue;
+  } else {
+    select.value = "TODOS";
+  }
 }
 
 function uniqueSortedValues(values, direction) {
