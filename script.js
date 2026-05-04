@@ -3,7 +3,7 @@ let processedData = [];
 let currentFilter = "TODOS";
 
 const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];
-const AUTO_REFRESH_MS = 2 * 60 * 60 * 1000;
+const AUTO_REFRESH_MS = 15 * 60 * 1000;
 
 // ── Toggle filtros ───────────────────────────────────────────────
 (function initToggle() {
