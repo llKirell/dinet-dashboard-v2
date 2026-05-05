@@ -512,14 +512,12 @@ function loadRows(rows, fileName, sheetName) {
   updateCountsAndScope();
   render();
 
-  // Activar auto-guardado: si no hay handle configurado, pedir archivo al usuario
+  // Activar auto-guardado solo si ya existe handle configurado.
+  // No abrir selector ni descargar archivo automaticamente en PCs nuevas.
   if ('showSaveFilePicker' in window && !cachedFileHandle) {
     getStoredHandle().then(h => {
       if (h) {
         startAutoSave(h);
-      } else {
-        // Primera carga sin archivo configurado → abrir selector automáticamente
-        setTimeout(() => saveToDatabase(false), 800);
       }
     });
   }
