@@ -30,10 +30,6 @@
     </div>
     <div class="header-actions">
       <input id="excelInput" type="file" accept=".xlsx,.xls,.xlsm,.csv" hidden />
-      <button type="button" class="pill pill-download" title="Guardar en archivo BD · Ctrl+clic para cambiar archivo destino" onclick="saveToDatabase(event.ctrlKey || event.metaKey)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Guardar en BD
-      </button>
       <button id="toggleFiltersBtn" type="button" class="pill pill-toggle" title="Mostrar / ocultar filtros">
         <svg id="toggleChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="18 15 12 9 6 15"></polyline></svg>
         <span id="toggleFiltersLabel">Ocultar filtros</span>
@@ -44,9 +40,9 @@
 
   <div id="filterSection">
     <div class="tabs">
-      <button class="tab active" data-filter="TODOS" type="button"><span class="tab-dot blue"></span>TODOS <span id="tabCountTodos" class="badge b-blue">0</span></button>
-      <button class="tab local" data-filter="LOCAL" type="button"><span class="tab-dot green"></span>LOCAL <span id="tabCountLocal" class="badge b-green">0</span></button>
-      <button class="tab prov" data-filter="PROVINCIA" type="button"><span class="tab-dot amber"></span>PROVINCIA <span id="tabCountProvincia" class="badge b-amber">0</span></button>
+      <button class="tab active" data-filter="TODOS" type="button"><span class="tab-dot blue"></span>TODOS <span id="tabCountTodos" hidden></span></button>
+      <button class="tab local" data-filter="LOCAL" type="button"><span class="tab-dot green"></span>LOCAL <span id="tabCountLocal" hidden></span></button>
+      <button class="tab prov" data-filter="PROVINCIA" type="button"><span class="tab-dot amber"></span>PROVINCIA <span id="tabCountProvincia" hidden></span></button>
     </div>
 
     <div class="filter-bar hidden" id="filterBar">

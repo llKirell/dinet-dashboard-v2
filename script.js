@@ -186,13 +186,61 @@ function buildWorkbook() {
   return { wb, filled };
 }
 
+// ── Auto-guardado cada 2 minutos ─────────────────────────────────────
+const AUTO_SAVE_BD_MS = 2 * 60 * 1000;
+let autoSaveTimer    = null;
+let cachedFileHandle = null; // handle en memoria para evitar IndexedDB en cada ciclo
+
+function setAutoSaveUI(active, lastTime = '') {
+  const dot  = document.getElementById('autoSaveDot');
+  const lbl  = document.getElementById('autoSaveLabel');
+  if (dot) dot.classList.toggle('auto-save-active', active);
+  if (lbl) lbl.textContent = active ? (lastTime ? `BD · ${lastTime}` : 'BD · auto') : 'Guardar en BD';
+}
+
+async function writeToHandle(handle, wb) {
+  const perm = await handle.queryPermission({ mode: 'readwrite' });
+  if (perm !== 'granted') return false;
+  const buffer   = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const writable = await handle.createWritable();
+  await writable.write(new Blob([buffer]));
+  await writable.close();
+  return true;
+}
+
+async function autoSave() {
+  if (!rawData.length || !cachedFileHandle) return;
+  try {
+    const { wb, filled } = buildWorkbook();
+    const ok = await writeToHandle(cachedFileHandle, wb);
+    if (!ok) return; // permiso expiró — esperar a que el usuario haga clic
+    const now = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+    setAutoSaveUI(true, now);
+    showToast(`Auto-guardado ${now} · ${filled} fila(s) guardada(s)`);
+  } catch {
+    // Handle obsoleto — detener auto-save y pedir al usuario que reconfigure
+    cachedFileHandle = null;
+    await storeHandle(null);
+    clearInterval(autoSaveTimer);
+    autoSaveTimer = null;
+    setAutoSaveUI(false);
+    showToast('Auto-guardado detenido: archivo no accesible. Haz clic en "Guardar en BD".', true);
+  }
+}
+
+function startAutoSave(handle) {
+  cachedFileHandle = handle;
+  if (autoSaveTimer) clearInterval(autoSaveTimer);
+  autoSaveTimer = setInterval(autoSave, AUTO_SAVE_BD_MS);
+  setAutoSaveUI(true);
+}
+
 async function saveToDatabase(forceNewFile = false) {
   if (!rawData.length) { showToast('No hay datos. Carga un Excel primero.', true); return; }
   const { wb, filled } = buildWorkbook();
 
-  // ── File System Access API (guarda sin diálogo tras la primera vez) ──
   if ('showSaveFilePicker' in window) {
-    let handle = forceNewFile ? null : await getStoredHandle();
+    let handle = forceNewFile ? null : (cachedFileHandle || await getStoredHandle());
 
     if (!handle) {
       try {
@@ -202,36 +250,30 @@ async function saveToDatabase(forceNewFile = false) {
         });
         await storeHandle(handle);
       } catch (e) {
-        if (e.name === 'AbortError') return; // usuario canceló
-        // Fallback a descarga normal
+        if (e.name === 'AbortError') return;
         XLSX.writeFile(wb, 'dinet_embarques_data.xlsx');
-        showToast(`✓ Descargado (${filled} fila(s) actualizada(s))`);
+        showToast(`Descargado · ${filled} fila(s) actualizada(s)`);
         return;
       }
     }
 
     try {
-      // Verificar / solicitar permiso de escritura
       let perm = await handle.queryPermission({ mode: 'readwrite' });
       if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
-      if (perm !== 'granted') {
-        showToast('Sin permiso para escribir el archivo.', true);
-        return;
-      }
-      const buffer   = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const writable = await handle.createWritable();
-      await writable.write(new Blob([buffer]));
-      await writable.close();
-      showToast(`✓ Guardado en "${handle.name}" — ${filled} fila(s) actualizada(s)`);
-    } catch (e) {
-      // Handle obsoleto (archivo movido/eliminado) → borrar y reintentar
+      if (perm !== 'granted') { showToast('Sin permiso para escribir.', true); return; }
+
+      await writeToHandle(handle, wb);
+      const now = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+      showToast(`✓ Guardado en "${handle.name}" · ${filled} fila(s) · ${now}`);
+      startAutoSave(handle); // ← activa / reinicia el timer de 2 min
+    } catch {
+      cachedFileHandle = null;
       await storeHandle(null);
-      showToast('Archivo no encontrado. Haz clic de nuevo para elegir destino.', true);
+      showToast('Archivo no encontrado. Clic de nuevo para elegir destino.', true);
     }
   } else {
-    // Fallback: descarga normal para navegadores sin soporte
     XLSX.writeFile(wb, 'dinet_embarques_data.xlsx');
-    showToast(`✓ Descargado — ${filled} fila(s) actualizada(s)`);
+    showToast(`Descargado · ${filled} fila(s) actualizada(s)`);
   }
 }
 
@@ -335,6 +377,21 @@ window.addEventListener("DOMContentLoaded", async () => {
   loadStageOverrides();
   initInlineStageEdit();
   initInlineCargaEdit();
+
+  // Reactivar auto-save si el handle ya existe y el permiso fue concedido esta sesión
+  const storedHandle = await getStoredHandle();
+  if (storedHandle) {
+    const perm = await storedHandle.queryPermission({ mode: 'readwrite' });
+    if (perm === 'granted') {
+      startAutoSave(storedHandle);
+    } else {
+      // Permiso expirado: mostrar indicador pero no arrancar — esperar clic manual
+      setAutoSaveUI(false);
+      const lbl = document.getElementById('autoSaveLabel');
+      if (lbl) lbl.textContent = 'Guardar en BD ⚠';
+    }
+  }
+
   await loadHostedWorkbook();
   window.setInterval(loadHostedWorkbook, AUTO_REFRESH_MS);
 });
@@ -408,6 +465,18 @@ function loadRows(rows, fileName, sheetName) {
   els.lastUpdateText.textContent = `Actualizado: ${new Date().toLocaleString("es-PE")}`;
   updateCountsAndScope();
   render();
+
+  // Activar auto-guardado: si no hay handle configurado, pedir archivo al usuario
+  if ('showSaveFilePicker' in window && !cachedFileHandle) {
+    getStoredHandle().then(h => {
+      if (h) {
+        startAutoSave(h);
+      } else {
+        // Primera carga sin archivo configurado → abrir selector automáticamente
+        setTimeout(() => saveToDatabase(false), 800);
+      }
+    });
+  }
 }
 
 function chooseDefaultFilter() {
