@@ -1225,6 +1225,22 @@ td { padding: 10px 8px !important; font-size: 11px !important; }
 .empty-actions .btn-primary { background: #1d4ed8; color: #fff; }
 .empty-actions .btn-secondary { background: #f1f5f9; color: #0f172a; margin-left: 8px; }
 
+/* ── Edición inline: Stage ─────────────────────────────────────── */
+.stage-editable { cursor: pointer; transition: background 0.15s; min-width: 80px; }
+.stage-editable:hover { background: rgba(37, 99, 235, 0.07) !important; }
+.stage-editable:hover::after { content: " ✎"; font-size: 0.7em; color: #94a3b8; }
+.stage-empty { color: #94a3b8; font-style: italic; font-size: 0.78rem; }
+.stage-input { width: 96px; border: 1.5px solid #3b82f6; border-radius: 5px; padding: 3px 6px; font-size: 0.8rem; font-family: inherit; font-weight: 600; background: #fff; outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+
+/* ── Edición inline: Estado Carga ──────────────────────────────── */
+.carga-editable { cursor: pointer; }
+.carga-editable:hover .estado-grafico { outline: 2px solid rgba(37,99,235,0.3); border-radius: 8px; }
+.carga-select { border: 1.5px solid #3b82f6; border-radius: 6px; padding: 4px 8px; font-size: 0.78rem; font-family: inherit; font-weight: 700; background: #fff; outline: none; cursor: pointer; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); width: 110px; }
+
+/* ── Botón Guardar en BD ───────────────────────────────────────── */
+.pill-download { background: rgba(20,133,79,0.08); color: #14854f; border: 1px solid rgba(20,133,79,0.22); font-weight: 700; gap: 6px; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-size: 0.78rem; cursor: pointer; transition: background 0.15s; }
+.pill-download:hover { background: rgba(20,133,79,0.16); }
+
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE MOBILE — 768px y 480px
    Solo layout/UI. Sin cambios en lógica de datos.

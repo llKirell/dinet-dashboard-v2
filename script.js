@@ -2,6 +2,151 @@ let rawData = [];
 let processedData = [];
 let currentFilter = "TODOS";
 
+// ── Edición inline de Stage / Estado Carga ───────────────────────────
+let stageOverrides = {};
+const STAGE_OVERRIDES_KEY = 'dinet_stage_overrides_v1';
+
+function loadStageOverrides() {
+  try { stageOverrides = JSON.parse(localStorage.getItem(STAGE_OVERRIDES_KEY) || '{}'); }
+  catch (_) { stageOverrides = {}; }
+}
+function saveStageOverrides() {
+  try { localStorage.setItem(STAGE_OVERRIDES_KEY, JSON.stringify(stageOverrides)); }
+  catch (_) {}
+}
+function rowKey(row) {
+  return `${String(row.dt || '').trim()}__${String(row.placa || '').trim()}`;
+}
+function deriveRampaFromStage(stage) {
+  if (!stage) return '';
+  const m = stage.trim().match(/ST\.0*(\d+)/i);
+  if (m) return String(parseInt(m[1], 10));
+  const nums = stage.match(/(\d+)/);
+  return nums ? String(parseInt(nums[1], 10)) : stage.trim();
+}
+function deriveEstadoCargaFromStage(stage, finCarga) {
+  const fin = String(finCarga || '').toUpperCase().trim();
+  if (fin === 'OK' || fin === 'SI' || fin === '✓' || fin === 'LISTO' || fin === 'X' || fin === '1') return 'CARGADO';
+  if (stage && stage.trim()) return 'EN_CARGA';
+  return 'PENDIENTE';
+}
+function applyRowOverrides(row) {
+  const ov = stageOverrides[rowKey(row)];
+  return ov ? { ...row, ...ov } : row;
+}
+function handleStageEdit(key, newStage, finCarga) {
+  if (!newStage) { delete stageOverrides[key]; }
+  else {
+    stageOverrides[key] = {
+      stageDestino: newStage,
+      rampa: deriveRampaFromStage(newStage),
+      estadoCarga: deriveEstadoCargaFromStage(newStage, finCarga)
+    };
+  }
+  saveStageOverrides();
+  render();
+}
+function handleEstadoCargaEdit(key, newEstado) {
+  stageOverrides[key] = { ...(stageOverrides[key] || {}), estadoCarga: newEstado };
+  saveStageOverrides();
+  render();
+}
+function initInlineStageEdit() {
+  const tbody = document.getElementById('detailTable');
+  if (!tbody) return;
+  tbody.addEventListener('click', (e) => {
+    const td = e.target.closest('.stage-editable');
+    if (!td || td.querySelector('input')) return;
+    const currentVal = td.textContent.trim();
+    const key = td.dataset.key;
+    const finCarga = td.dataset.fincarga || '';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentVal;
+    input.className = 'stage-input';
+    input.placeholder = 'Ej: ST.03.05';
+    td.innerHTML = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+    let committed = false;
+    const commit = () => {
+      if (committed) return;
+      committed = true;
+      handleStageEdit(key, input.value.trim().toUpperCase(), finCarga);
+    };
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+      if (ev.key === 'Escape') { committed = true; render(); }
+    });
+  });
+}
+function initInlineCargaEdit() {
+  const tbody = document.getElementById('detailTable');
+  if (!tbody) return;
+  tbody.addEventListener('click', (e) => {
+    const td = e.target.closest('.carga-editable');
+    if (!td || td.querySelector('select')) return;
+    const key = td.dataset.key;
+    const currentEstado = td.dataset.estado || 'PENDIENTE';
+    const select = document.createElement('select');
+    select.className = 'carga-select';
+    [{ value: 'PENDIENTE', label: 'PENDIENTE' }, { value: 'EN_CARGA', label: 'EN CARGA' }, { value: 'CARGADO', label: 'CARGADO' }]
+      .forEach(({ value, label }) => {
+        const opt = document.createElement('option');
+        opt.value = value; opt.textContent = label;
+        if (value === currentEstado) opt.selected = true;
+        select.appendChild(opt);
+      });
+    td.innerHTML = '';
+    td.appendChild(select);
+    select.focus();
+    select.addEventListener('change', () => handleEstadoCargaEdit(key, select.value));
+    select.addEventListener('blur', () => render());
+  });
+}
+function findColKey(sampleRow, alternatives) {
+  for (const key of alternatives) {
+    if (Object.prototype.hasOwnProperty.call(sampleRow, key)) return key;
+  }
+  const lowerAlts = alternatives.map(a => String(a).toLowerCase().trim());
+  for (const key of Object.keys(sampleRow)) {
+    if (lowerAlts.includes(String(key).toLowerCase().trim())) return key;
+  }
+  return alternatives[0];
+}
+function saveToDatabase() {
+  if (!rawData.length) { alert('No hay datos. Carga un Excel primero.'); return; }
+  const sample    = rawData[0];
+  const dtCol     = findColKey(sample, ["DT", "dt", "Nro_DT", "Documento", "NRO DT"]);
+  const placaCol  = findColKey(sample, ["Placa", "PLACA", "placa", "PLACA CAMION", "Placa Camion"]);
+  const stageCol  = findColKey(sample, ["Stage_Destino", "Stage Destino", "STAGE_DESTINO", "Stage"]);
+  const rampaCol  = findColKey(sample, ["Rampa", "RAMPA", "RAMPAS", "rampas", "Rampas"]);
+  const estadoCol = findColKey(sample, ["Estado_Carga", "Estado Carga", "ESTADO_CARGA", "Carga", "CARGA"]);
+  let filled = 0;
+  const updatedRows = rawData.map(rawRow => {
+    const dt    = String(rawRow[dtCol]    || '').trim();
+    const placa = String(rawRow[placaCol] || '').trim().toUpperCase();
+    const ov    = stageOverrides[`${dt}__${placa}`];
+    if (!ov) return rawRow;
+    const row = { ...rawRow };
+    let changed = false;
+    if (ov.stageDestino && !String(row[stageCol] || '').trim()) { row[stageCol] = ov.stageDestino; changed = true; }
+    if (ov.rampa        && !String(row[rampaCol]  || '').trim()) { row[rampaCol]  = ov.rampa;        changed = true; }
+    if (ov.estadoCarga  && !String(row[estadoCol] || '').trim()) { row[estadoCol] = ov.estadoCarga;  changed = true; }
+    if (changed) filled++;
+    return row;
+  });
+  const ws = XLSX.utils.json_to_sheet(updatedRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Embarques');
+  XLSX.writeFile(wb, 'latest.xlsx');
+  alert(filled > 0
+    ? `✓ ${filled} fila(s) actualizada(s).\n\nReemplaza "data/latest.xlsx" en el repositorio con este archivo.`
+    : 'No había campos vacíos. Archivo descargado de todas formas.');
+}
+
 const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 
@@ -99,6 +244,9 @@ async function loadHostedWorkbook() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+  loadStageOverrides();
+  initInlineStageEdit();
+  initInlineCargaEdit();
   await loadHostedWorkbook();
   window.setInterval(loadHostedWorkbook, AUTO_REFRESH_MS);
 });
@@ -480,7 +628,7 @@ function calcularCriticidad(avance, faltante, solicitado) {
 function filteredRows() {
   const searchText = els.searchInput ? els.searchInput.value.toUpperCase() : "";
 
-  return processedData.filter((row) => {
+  return processedData.map(applyRowOverrides).filter((row) => {
     const typeMatch = currentFilter === "TODOS" ? true : row.tipo === currentFilter;
     const dayMatch = dateFilter.day === "TODOS" ? true : row.fechaInfo.day === dateFilter.day;
     const monthMatch = dateFilter.month === "TODOS" ? true : row.fechaInfo.month === dateFilter.month;
@@ -851,10 +999,10 @@ function renderTable(rows, summary) {
           <div class="pct-text">${fmtPct(row.avance)}</div>
           <div class="mini-bar"><div class="${barClass(row.avance)}" style="width:${Math.round(row.avance * 100)}%"></div></div>
         </td>
-        <td class="rampa-cell">${escapeHtml(row.stageDestino.split(" / ")[0].split(",")[0].trim())}</td>
+        <td class="rampa-cell stage-editable" title="Clic para editar Stage" data-key="${escapeHtml(rowKey(row))}" data-fincarga="${escapeHtml(row.finCarga || '')}">${(() => { const sv = row.stageDestino.split(" / ")[0].split(",")[0].trim(); return sv ? escapeHtml(sv) : '<span class="stage-empty">+ Stage</span>'; })()}</td>
         <td class="rampa-cell">${escapeHtml(row.rampa)}</td>
         <td class="rampa-cell">${escapeHtml(row.cita)}</td>
-        <td class="carga-td" style="padding: 6px;">${cargaIcon(row.estadoCarga)}</td>
+        <td class="carga-td carga-editable" style="padding: 6px;" title="Clic para cambiar estado" data-key="${escapeHtml(rowKey(row))}" data-estado="${escapeHtml(row.estadoCarga)}">${cargaIcon(row.estadoCarga)}</td>
       </tr>
     `).join("")
     : '<tr><td colspan="15" style="text-align:center;padding:24px;color:#94a3b8">No hay registros para el filtro actual.</td></tr>';
