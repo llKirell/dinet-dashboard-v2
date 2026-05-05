@@ -82,6 +82,46 @@ function initInlineStageEdit() {
     });
   });
 }
+function handleFieldEdit(key, field, value) {
+  const trimmed = field === 'placa' ? value.toUpperCase() : value;
+  stageOverrides[key] = { ...(stageOverrides[key] || {}), [field]: trimmed };
+  saveStageOverrides();
+  render();
+}
+
+function initInlineFieldEdit() {
+  const tbody = document.getElementById('detailTable');
+  if (!tbody) return;
+  const PLACEHOLDERS = { placa: 'Ej: AKR-892', cita: 'Ej: 08:00' };
+  tbody.addEventListener('click', (e) => {
+    const td = e.target.closest('.field-editable');
+    if (!td || td.querySelector('input')) return;
+    const key   = td.dataset.key;
+    const field = td.dataset.field;
+    const currentVal = td.dataset.rawval || '';
+    const input = document.createElement('input');
+    input.type        = 'text';
+    input.value       = currentVal;
+    input.className   = 'stage-input';
+    input.placeholder = PLACEHOLDERS[field] || '';
+    td.innerHTML = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+    let committed = false;
+    const commit = () => {
+      if (committed) return;
+      committed = true;
+      handleFieldEdit(key, field, input.value.trim());
+    };
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+      if (ev.key === 'Escape') { committed = true; render(); }
+    });
+  });
+}
+
 function initInlineCargaEdit() {
   const tbody = document.getElementById('detailTable');
   if (!tbody) return;
@@ -166,6 +206,7 @@ function buildWorkbook() {
   const stageCol  = findColKey(sample, ["Stage_Destino", "Stage Destino", "STAGE_DESTINO", "Stage"]);
   const rampaCol  = findColKey(sample, ["Rampa", "RAMPA", "RAMPAS", "rampas", "Rampas"]);
   const estadoCol = findColKey(sample, ["Estado_Carga", "Estado Carga", "ESTADO_CARGA", "Carga", "CARGA"]);
+  const citaCol   = findColKey(sample, ["Cita", "CITA", "cita", "Hora_Cita"]);
   let filled = 0;
   const updatedRows = rawData.map(rawRow => {
     const dt    = String(rawRow[dtCol]    || '').trim();
@@ -174,9 +215,13 @@ function buildWorkbook() {
     if (!ov) return rawRow;
     const row = { ...rawRow };
     let changed = false;
+    // Solo rellena blancos (datos que venían vacíos del sistema):
     if (ov.stageDestino && !String(row[stageCol] || '').trim()) { row[stageCol] = ov.stageDestino; changed = true; }
     if (ov.rampa        && !String(row[rampaCol]  || '').trim()) { row[rampaCol]  = ov.rampa;        changed = true; }
     if (ov.estadoCarga  && !String(row[estadoCol] || '').trim()) { row[estadoCol] = ov.estadoCarga;  changed = true; }
+    // Siempre sobreescribe (correcciones del operador):
+    if (ov.placa !== undefined) { row[placaCol] = ov.placa; changed = true; }
+    if (ov.cita  !== undefined) { row[citaCol]  = ov.cita;  changed = true; }
     if (changed) filled++;
     return row;
   });
@@ -377,6 +422,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   loadStageOverrides();
   initInlineStageEdit();
   initInlineCargaEdit();
+  initInlineFieldEdit();
 
   // Reactivar auto-save si el handle ya existe y el permiso fue concedido esta sesión
   const storedHandle = await getStoredHandle();
@@ -1151,14 +1197,14 @@ function renderTable(rows, summary) {
         <td class="num">${fmtDec(row.volumen)}</td>
         <td class="num">${fmtNum(row.solicitado)}</td>
         <td class="num">${fmtNum(row.picado)}</td>
-        <td class="placa-cell">${escapeHtml(row.placa)}</td>
+        <td class="placa-cell field-editable" title="Clic para editar Placa" data-key="${escapeHtml(rowKey(row))}" data-field="placa" data-rawval="${escapeHtml(row.placa)}">${row.placa ? escapeHtml(row.placa) : '<span class="stage-empty">+ Placa</span>'}</td>
         <td class="pct-cell">
           <div class="pct-text">${fmtPct(row.avance)}</div>
           <div class="mini-bar"><div class="${barClass(row.avance)}" style="width:${Math.round(row.avance * 100)}%"></div></div>
         </td>
         <td class="rampa-cell stage-editable" title="Clic para editar Stage" data-key="${escapeHtml(rowKey(row))}" data-fincarga="${escapeHtml(row.finCarga || '')}">${(() => { const sv = row.stageDestino.split(" / ")[0].split(",")[0].trim(); return sv ? escapeHtml(sv) : '<span class="stage-empty">+ Stage</span>'; })()}</td>
         <td class="rampa-cell">${escapeHtml(row.rampa)}</td>
-        <td class="rampa-cell">${escapeHtml(row.cita)}</td>
+        <td class="rampa-cell field-editable" title="Clic para editar Cita" data-key="${escapeHtml(rowKey(row))}" data-field="cita" data-rawval="${escapeHtml(row.cita)}">${row.cita ? escapeHtml(row.cita) : '<span class="stage-empty">+ Cita</span>'}</td>
         <td class="carga-td carga-editable" style="padding: 6px;" title="Clic para cambiar estado" data-key="${escapeHtml(rowKey(row))}" data-estado="${escapeHtml(row.estadoCarga)}">${cargaIcon(row.estadoCarga)}</td>
       </tr>
     `).join("")

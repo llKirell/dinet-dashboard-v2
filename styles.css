@@ -1232,6 +1232,11 @@ td { padding: 10px 8px !important; font-size: 11px !important; }
 .stage-empty { color: #94a3b8; font-style: italic; font-size: 0.78rem; }
 .stage-input { width: 96px; border: 1.5px solid #3b82f6; border-radius: 5px; padding: 3px 6px; font-size: 0.8rem; font-family: inherit; font-weight: 600; background: #fff; outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
 
+/* ── Edición inline: Placa y Cita ──────────────────────────────── */
+.field-editable { cursor: pointer; transition: background 0.15s; }
+.field-editable:hover { background: rgba(37, 99, 235, 0.07) !important; }
+.field-editable:hover::after { content: " ✎"; font-size: 0.7em; color: #94a3b8; }
+
 /* ── Edición inline: Estado Carga ──────────────────────────────── */
 .carga-editable { cursor: pointer; }
 .carga-editable:hover .estado-grafico { outline: 2px solid rgba(37,99,235,0.3); border-radius: 8px; }
