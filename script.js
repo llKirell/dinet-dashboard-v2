@@ -616,8 +616,8 @@ function normalizeRow(row) {
     familias,
     motivoDiferencia,
     usuarioEjecucion,
-    prioridad: calcularPrioridad(avance, faltante),
-    estado: calcularEstado(avance, faltante),
+    prioridad: calcularPrioridad(avance, faltante, solicitado, picado),
+    estado: calcularEstado(avance, faltante, solicitado, picado),
     criticidad: calcularCriticidad(avance, faltante, solicitado)
   };
 }
@@ -807,14 +807,18 @@ function lookupCatalog(map, key) {
   return "";
 }
 
-function calcularEstado(avance, faltante) {
-  if (avance >= 1 || faltante <= 0) return "Completo";
-  if (avance >= 0.75) return "En proceso";
+function calcularEstado(avance, faltante, solicitado, picado) {
+  // Regla estricta de clasificación:
+  // - Completo: pedido > 0 y picado >= pedido
+  // - En proceso: pedido > 0 y 0 < picado < pedido
+  // - Pendiente: pedido 0/vacío o picado 0
+  if (solicitado > 0 && picado >= solicitado) return "Completo";
+  if (solicitado > 0 && picado > 0 && picado < solicitado) return "En proceso";
   return "Pendiente";
 }
 
-function calcularPrioridad(avance, faltante) {
-  if (avance >= 1 || faltante <= 0) return "CERRADO";
+function calcularPrioridad(avance, faltante, solicitado, picado) {
+  if (solicitado > 0 && picado >= solicitado) return "CERRADO";
   if (avance < 0.65 || faltante >= 500) return "ALTA";
   if (avance < 0.9 || faltante >= 100) return "MEDIA";
   return "BAJA";
