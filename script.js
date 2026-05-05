@@ -116,8 +116,50 @@ function findColKey(sampleRow, alternatives) {
   }
   return alternatives[0];
 }
-function saveToDatabase() {
-  if (!rawData.length) { alert('No hay datos. Carga un Excel primero.'); return; }
+// ── File System Access API — manejo de handle persistente ────────────
+const FS_DB = 'dinet_fs_db', FS_STORE = 'handles', FS_KEY = 'bd_file';
+
+function openFsDb() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(FS_DB, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(FS_STORE);
+    req.onsuccess = e => res(e.target.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+async function getStoredHandle() {
+  try {
+    const db = await openFsDb();
+    return await new Promise(res => {
+      const req = db.transaction(FS_STORE).objectStore(FS_STORE).get(FS_KEY);
+      req.onsuccess = () => res(req.result || null);
+      req.onerror   = () => res(null);
+    });
+  } catch { return null; }
+}
+async function storeHandle(handle) {
+  try {
+    const db = await openFsDb();
+    await new Promise(res => {
+      const tx = db.transaction(FS_STORE, 'readwrite');
+      handle ? tx.objectStore(FS_STORE).put(handle, FS_KEY)
+             : tx.objectStore(FS_STORE).delete(FS_KEY);
+      tx.oncomplete = res;
+    });
+  } catch {}
+}
+
+function showToast(msg, isError = false) {
+  document.querySelectorAll('.save-toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'save-toast' + (isError ? ' save-toast-error' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('show'));
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3500);
+}
+
+function buildWorkbook() {
   const sample    = rawData[0];
   const dtCol     = findColKey(sample, ["DT", "dt", "Nro_DT", "Documento", "NRO DT"]);
   const placaCol  = findColKey(sample, ["Placa", "PLACA", "placa", "PLACA CAMION", "Placa Camion"]);
@@ -141,10 +183,56 @@ function saveToDatabase() {
   const ws = XLSX.utils.json_to_sheet(updatedRows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Embarques');
-  XLSX.writeFile(wb, 'latest.xlsx');
-  alert(filled > 0
-    ? `✓ ${filled} fila(s) actualizada(s).\n\nReemplaza "data/latest.xlsx" en el repositorio con este archivo.`
-    : 'No había campos vacíos. Archivo descargado de todas formas.');
+  return { wb, filled };
+}
+
+async function saveToDatabase(forceNewFile = false) {
+  if (!rawData.length) { showToast('No hay datos. Carga un Excel primero.', true); return; }
+  const { wb, filled } = buildWorkbook();
+
+  // ── File System Access API (guarda sin diálogo tras la primera vez) ──
+  if ('showSaveFilePicker' in window) {
+    let handle = forceNewFile ? null : await getStoredHandle();
+
+    if (!handle) {
+      try {
+        handle = await window.showSaveFilePicker({
+          suggestedName: 'dinet_embarques_data.xlsx',
+          types: [{ description: 'Excel Workbook', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
+        });
+        await storeHandle(handle);
+      } catch (e) {
+        if (e.name === 'AbortError') return; // usuario canceló
+        // Fallback a descarga normal
+        XLSX.writeFile(wb, 'dinet_embarques_data.xlsx');
+        showToast(`✓ Descargado (${filled} fila(s) actualizada(s))`);
+        return;
+      }
+    }
+
+    try {
+      // Verificar / solicitar permiso de escritura
+      let perm = await handle.queryPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
+      if (perm !== 'granted') {
+        showToast('Sin permiso para escribir el archivo.', true);
+        return;
+      }
+      const buffer   = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const writable = await handle.createWritable();
+      await writable.write(new Blob([buffer]));
+      await writable.close();
+      showToast(`✓ Guardado en "${handle.name}" — ${filled} fila(s) actualizada(s)`);
+    } catch (e) {
+      // Handle obsoleto (archivo movido/eliminado) → borrar y reintentar
+      await storeHandle(null);
+      showToast('Archivo no encontrado. Haz clic de nuevo para elegir destino.', true);
+    }
+  } else {
+    // Fallback: descarga normal para navegadores sin soporte
+    XLSX.writeFile(wb, 'dinet_embarques_data.xlsx');
+    showToast(`✓ Descargado — ${filled} fila(s) actualizada(s)`);
+  }
 }
 
 const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];

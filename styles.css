@@ -1241,6 +1241,11 @@ td { padding: 10px 8px !important; font-size: 11px !important; }
 .pill-download { background: rgba(20,133,79,0.08); color: #14854f; border: 1px solid rgba(20,133,79,0.22); font-weight: 700; gap: 6px; display: inline-flex; align-items: center; padding: 7px 14px; border-radius: 999px; font-size: 0.78rem; cursor: pointer; transition: background 0.15s; }
 .pill-download:hover { background: rgba(20,133,79,0.16); }
 
+/* ── Toast de confirmación ─────────────────────────────────────── */
+.save-toast { position: fixed; bottom: 28px; right: 28px; z-index: 9999; background: #0f172a; color: #fff; padding: 12px 20px; border-radius: 12px; font-size: 0.82rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.18); opacity: 0; transform: translateY(10px); transition: opacity 0.25s, transform 0.25s; pointer-events: none; max-width: 340px; }
+.save-toast.show { opacity: 1; transform: translateY(0); }
+.save-toast-error { background: #dc2626; }
+
 /* ═══════════════════════════════════════════════════════════════
    RESPONSIVE MOBILE — 768px y 480px
    Solo layout/UI. Sin cambios en lógica de datos.
