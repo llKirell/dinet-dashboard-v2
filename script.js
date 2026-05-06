@@ -128,6 +128,7 @@ function initInlineCargaEdit() {
   tbody.addEventListener('click', (e) => {
     const td = e.target.closest('.carga-editable');
     if (!td || td.querySelector('select')) return;
+    if (td.dataset.canEdit !== '1') return;
     const key = td.dataset.key;
     const currentEstado = td.dataset.estado || 'PENDIENTE';
     const select = document.createElement('select');
@@ -1207,7 +1208,7 @@ function renderTable(rows, summary) {
         <td class="rampa-cell stage-editable" title="Clic para editar Stage" data-key="${escapeHtml(rowKey(row))}" data-fincarga="${escapeHtml(row.finCarga || '')}">${(() => { const sv = row.stageDestino.split(" / ")[0].split(",")[0].trim(); return sv ? escapeHtml(sv) : '<span class="stage-empty">+ Stage</span>'; })()}</td>
         <td class="rampa-cell">${escapeHtml(row.rampa)}</td>
         <td class="rampa-cell field-editable" title="Clic para editar Cita" data-key="${escapeHtml(rowKey(row))}" data-field="cita" data-rawval="${escapeHtml(row.cita)}">${row.cita ? escapeHtml(row.cita) : '<span class="stage-empty">+ Cita</span>'}</td>
-        <td class="carga-td carga-editable" style="padding: 6px;" title="Clic para cambiar estado" data-key="${escapeHtml(rowKey(row))}" data-estado="${escapeHtml(row.estadoCarga)}">${cargaIcon(row.estadoCarga)}</td>
+        <td class="carga-td ${row.avance >= 1 ? 'carga-editable' : ''}" style="padding: 6px; ${row.avance >= 1 ? 'cursor:pointer;' : 'cursor:not-allowed;opacity:.75;'}" title="${row.avance >= 1 ? 'Clic para cambiar estado' : 'Solo editable cuando % avance es 100%'}" data-can-edit="${row.avance >= 1 ? '1' : '0'}" data-key="${escapeHtml(rowKey(row))}" data-estado="${escapeHtml(row.estadoCarga)}">${cargaIcon(row.estadoCarga)}</td>
       </tr>
     `).join("")
     : '<tr><td colspan="15" style="text-align:center;padding:24px;color:#94a3b8">No hay registros para el filtro actual.</td></tr>';
