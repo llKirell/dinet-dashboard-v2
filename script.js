@@ -543,9 +543,14 @@ function normalizeRow(row) {
   );
   const picadoOriginal = toNumber(pick(row, ["Und_Picadas", "Picado", "picado", "UND_PICADAS", "UNIDADES PICADAS", "Avance (Caj)", "Avance"]));
 
-  // Base operativa: si existe asignado DINET, se considera el nuevo 100% real.
-  const solicitado = asignadoDinet > 0 ? asignadoDinet : solicitadoOriginal;
-  const picado = picadoOriginal === 0 && asignadoDinet > 0 ? asignadoDinet : picadoOriginal;
+  // Guardarrail: si asignado viene inflado x10, no usarlo como base.
+  const refBase = Math.max(solicitadoOriginal, picadoOriginal);
+  const asignadoLooksX10 = refBase > 0 && asignadoDinet === refBase * 10;
+  const assignedSafe = asignadoLooksX10 ? refBase : asignadoDinet;
+
+  // Base operativa: priorizar asignado DINET solo cuando es consistente.
+  const solicitado = assignedSafe > 0 ? assignedSafe : solicitadoOriginal;
+  const picado = picadoOriginal === 0 && assignedSafe > 0 ? assignedSafe : picadoOriginal;
   const avance = solicitado > 0 ? clamp(picado / solicitado, 0, 1) : 0;
   const faltante = Math.max(solicitado - picado, 0);
   const tipoDestino = String(pick(row, ["Tipo_Destino", "Tipo", "tipo", "TIPO_DESTINO", "TIPO DESTINO"]) || "").trim();
