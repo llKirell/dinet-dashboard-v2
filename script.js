@@ -859,6 +859,29 @@ function summarize(rows) {
   const avance = solicitado > 0 ? picado / solicitado : 0;
   const totalPeso = sum(rows, "peso");
   const totalVolumen = sum(rows, "volumen");
+  // Pendiente TON/M3 debe salir de la suma real por DT (no de una regla global Total*%).
+  // Si un DT tiene solicitado>0, se toma su proporcion faltante.
+  // Si solicitado=0 y el estado no es Completo, se considera 100% pendiente.
+  const pendientePeso = rows.reduce((acc, row) => {
+    const sol = Number(row.solicitado) || 0;
+    const pic = Number(row.picado) || 0;
+    const peso = Number(row.peso) || 0;
+    if (sol > 0) {
+      const ratioPend = clamp((sol - pic) / sol, 0, 1);
+      return acc + (peso * ratioPend);
+    }
+    return row.estado === "Completo" ? acc : acc + peso;
+  }, 0);
+  const pendienteVolumen = rows.reduce((acc, row) => {
+    const sol = Number(row.solicitado) || 0;
+    const pic = Number(row.picado) || 0;
+    const vol = Number(row.volumen) || 0;
+    if (sol > 0) {
+      const ratioPend = clamp((sol - pic) / sol, 0, 1);
+      return acc + (vol * ratioPend);
+    }
+    return row.estado === "Completo" ? acc : acc + vol;
+  }, 0);
   const completos = rows.filter((row) => row.estado === "Completo").length;
   const pendientes = rows.length - completos;
   const alta = rows.filter((row) => row.prioridad === "ALTA").length;
@@ -880,6 +903,8 @@ function summarize(rows) {
     avance,
     totalPeso,
     totalVolumen,
+    pendientePeso,
+    pendienteVolumen,
     completos,
     pendientes,
     alta,
@@ -1118,8 +1143,8 @@ function gaugeInnerHtml(id, label, subtitle, pct) {
 
 
 function summaryStripHtml(summary) {
-  const faltantePeso = Math.max(summary.totalPeso - summary.totalPeso * summary.avance, 0);
-  const faltanteVol = Math.max(summary.totalVolumen - summary.totalVolumen * summary.avance, 0);
+  const faltantePeso = Math.max(Number(summary.pendientePeso) || 0, 0);
+  const faltanteVol = Math.max(Number(summary.pendienteVolumen) || 0, 0);
 
   const filas = [
     {
@@ -1132,8 +1157,8 @@ function summaryStripHtml(summary) {
     },
     {
       label: "AVANCE PIKING",
-      peso: summary.totalPeso * summary.avance,
-      vol: summary.totalVolumen * summary.avance,
+      peso: Math.max(summary.totalPeso - faltantePeso, 0),
+      vol: Math.max(summary.totalVolumen - faltanteVol, 0),
       caj: summary.picado,
       bold: false,
       cls: "ok"
