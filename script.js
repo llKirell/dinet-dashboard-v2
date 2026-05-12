@@ -535,6 +535,8 @@ function chooseDefaultFilter() {
 
 function normalizeRow(row) {
   const fechaGeneracionRaw = pickFirstValidDate(row, [
+    "Fecha_Generacion_Picking",
+    "FECHA_GENERACION_PICKING",
     "Fecha_Generacion",
     "Fecha Generacion",
     "FECHA_GENERACION",
