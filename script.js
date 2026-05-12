@@ -656,7 +656,7 @@ function normalizeRow(row) {
     motivoDiferencia,
     usuarioEjecucion,
     prioridad: calcularPrioridad(avance, faltante, solicitado, picado),
-    estado: calcularEstado(avance, faltante, solicitado, picado),
+    estado: calcularEstado(avance, faltante, solicitado, picado, hasCruceAsignacion),
     criticidad: calcularCriticidad(avance, faltante, solicitado)
   };
 }
@@ -936,7 +936,8 @@ function lookupCatalog(map, key) {
   return "";
 }
 
-function calcularEstado(avance, faltante, solicitado, picado) {
+function calcularEstado(avance, faltante, solicitado, picado, hasCruceAsignacion = true) {
+  if (!hasCruceAsignacion) return "Sin cruce";
   // Regla estricta de clasificación:
   // - Completo: pedido > 0 y picado >= pedido
   // - En proceso: pedido > 0 y 0 < picado < pedido
@@ -1006,7 +1007,7 @@ function summarize(rows) {
     return row.estado === "Completo" ? acc : acc + vol;
   }, 0);
   const completos = rows.filter((row) => row.estado === "Completo").length;
-  const pendientes = rows.length - completos;
+  const pendientes = rows.filter((row) => row.estado === "Pendiente").length;
   const alta = rows.filter((row) => row.prioridad === "ALTA").length;
   const meta = FILTER_CONFIG[currentFilter]?.meta ?? 0.9;
 
