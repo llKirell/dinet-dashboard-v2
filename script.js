@@ -325,16 +325,6 @@ async function saveToDatabase(forceNewFile = false) {
 
 const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
-const DT_OPERATIONAL_OVERRIDES = {
-  "98262218": { estado: "Completo", avance: 1.0 },
-  "98262247": { estado: "Completo", avance: 1.0 },
-  "98262560": { estado: "En proceso", avance: 0.85 },
-  "98267497": { estado: "En proceso", avance: 0.9 },
-  "98267502": { estado: "Completo", avance: 1.0 },
-  "98272635": { estado: "Pendiente", avance: 0.0 },
-  "98272654": { estado: "Completo", avance: 1.0 },
-  "98272655": { estado: "Completo", avance: 1.0 }
-};
 
 // ── Toggle filtros ───────────────────────────────────────────────
 (function initToggle() {
@@ -626,9 +616,8 @@ function normalizeRow(row) {
   const usuarioEjecucion = String(pick(row, ["Usuario_Ejecucion", "Usuario Ejecucion", "USUARIO_EJECUCION", "Usuario"]) || "").trim();
 
   const dtValue = String(pick(row, ["DT", "dt", "Nro_DT", "Documento", "NRO DT"]) || "").trim();
-  const override = DT_OPERATIONAL_OVERRIDES[dtValue] || null;
-  const avanceFinal = override && typeof override.avance === "number" ? clamp(override.avance, 0, 1) : avance;
-  const estadoFinal = override && override.estado ? override.estado : calcularEstado(avanceFinal, faltante, solicitado, picado);
+  const avanceFinal = avance;
+  const estadoFinal = calcularEstado(avanceFinal, faltante, solicitado, picado);
   const prioridadFinal = calcularPrioridad(avanceFinal, faltante, solicitado, picado);
 
   return {
