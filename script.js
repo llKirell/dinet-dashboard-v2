@@ -656,7 +656,7 @@ function normalizeRow(row) {
     motivoDiferencia,
     usuarioEjecucion,
     prioridad: calcularPrioridad(avance, faltante, solicitado, picado),
-    estado: calcularEstado(avance, faltante, solicitado, picado, hasCruceAsignacion),
+    estado: calcularEstado(avance, faltante, solicitado, picado),
     criticidad: calcularCriticidad(avance, faltante, solicitado)
   };
 }
@@ -936,8 +936,7 @@ function lookupCatalog(map, key) {
   return "";
 }
 
-function calcularEstado(avance, faltante, solicitado, picado, hasCruceAsignacion = true) {
-  if (!hasCruceAsignacion) return "Sin cruce";
+function calcularEstado(avance, faltante, solicitado, picado) {
   // Regla estricta de clasificación:
   // - Completo: pedido > 0 y picado >= pedido
   // - En proceso: pedido > 0 y 0 < picado < pedido
