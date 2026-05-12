@@ -497,7 +497,10 @@ async function handleExcelUpload(event) {
 
 function loadRows(rows, fileName, sheetName) {
   rawData = rows;
-  processedData = rows.map(normalizeRow).filter((row) => row.dt || row.destino || row.solicitado || row.picado);
+  const normalizedRows = rows
+    .map(normalizeRow)
+    .filter((row) => row.dt || row.destino || row.solicitado || row.picado);
+  processedData = dedupeRowsByDt(normalizedRows);
   dateFilter = { day: "TODOS", month: "TODOS", year: "TODOS" };
 
   currentFilter = chooseDefaultFilter();
@@ -531,6 +534,19 @@ function chooseDefaultFilter() {
 }
 
 function normalizeRow(row) {
+  const fechaGeneracionRaw = pickFirstValidDate(row, [
+    "Fecha_Generacion",
+    "Fecha Generacion",
+    "FECHA_GENERACION",
+    "Fecha de Generacion",
+    "Fecha de Generación",
+    "Fec. Generacion",
+    "Fecha de Generación Picking"
+  ]);
+  const fechaOperativaRaw = pickFirstValidDate(row, ["Fecha_Operativa", "Fecha Operativa", "FECHA_OPERATIVA"]);
+  const fechaFallbackRaw = pickFirstValidDate(row, ["Fecha", "fecha", "FECHA"]);
+  // Prioridad de fecha real: generacion de picking > operativa > fecha general
+  const fechaPreferida = fechaGeneracionRaw || fechaOperativaRaw || fechaFallbackRaw;
   const solicitadoOriginal = toNumber(pick(row, ["Und_Solicitadas", "Solicitado", "solicitado", "UND_SOLICITADAS", "UNIDADES SOLICITADAS", "Pedido (Caj)", "Pedido"]));
   const asignadoDinet = toNumber(
     pick(row, [
@@ -587,8 +603,10 @@ function normalizeRow(row) {
   const usuarioEjecucion = String(pick(row, ["Usuario_Ejecucion", "Usuario Ejecucion", "USUARIO_EJECUCION", "Usuario"]) || "").trim();
 
   return {
-    fecha: normalizeDate(pick(row, ["Fecha", "fecha", "FECHA"])),
-    fechaInfo: parseDateParts(pick(row, ["Fecha", "fecha", "FECHA"])),
+    fecha: normalizeDate(fechaPreferida),
+    fechaInfo: parseDateParts(fechaPreferida),
+    fechaGeneracion: normalizeDate(fechaGeneracionRaw || fechaPreferida),
+    fechaGeneracionRaw: fechaGeneracionRaw || "",
     hora: String(pick(row, ["Hora", "hora", "HORA"]) || "").trim(),
     dt: String(pick(row, ["DT", "dt", "Nro_DT", "Documento", "NRO DT"]) || "").trim(),
     transporte: titleCase(pick(row, ["Transporte", "transporte", "TRANSPORTE"]) || "SIN TRANSPORTE"),
@@ -626,6 +644,96 @@ function normalizeRow(row) {
     estado: calcularEstado(avance, faltante, solicitado, picado),
     criticidad: calcularCriticidad(avance, faltante, solicitado)
   };
+}
+
+function dedupeRowsByDt(rows) {
+  const byDt = new Map();
+
+  for (const row of rows) {
+    const dtKey = String(row.dt || "").trim();
+    if (!dtKey) continue;
+
+    const prev = byDt.get(dtKey);
+    if (!prev || shouldReplaceRowForDt(prev, row)) {
+      byDt.set(dtKey, row);
+    }
+  }
+
+  const rowsWithoutDt = rows.filter((r) => !String(r.dt || "").trim());
+  return [...byDt.values(), ...rowsWithoutDt];
+}
+
+function shouldReplaceRowForDt(current, candidate) {
+  const currentScore = scoreRowForDt(current);
+  const candidateScore = scoreRowForDt(candidate);
+  if (candidateScore !== currentScore) return candidateScore > currentScore;
+
+  const currentTime = parseDateTimeToEpoch(current.fechaGeneracionRaw || current.fechaGeneracion || current.fecha);
+  const candidateTime = parseDateTimeToEpoch(candidate.fechaGeneracionRaw || candidate.fechaGeneracion || candidate.fecha);
+  if (candidateTime !== currentTime) return candidateTime > currentTime;
+
+  const currentDate = parseDateToEpoch(current.fecha);
+  const candidateDate = parseDateToEpoch(candidate.fecha);
+  if (candidateDate !== currentDate) return candidateDate > currentDate;
+
+  return false;
+}
+
+function scoreRowForDt(row) {
+  const solicitado = Number(row.solicitado) || 0;
+  const picado = Number(row.picado) || 0;
+  const faltante = Number(row.faltante) || 0;
+
+  // Puntaje mayor = fila mas util para operacion real
+  // Prioriza la base mas completa (solicitado), luego avance y menor faltante.
+  return (solicitado * 1000000) + (picado * 1000) - faltante;
+}
+
+function parseDateToEpoch(value) {
+  const p = parseDateParts(value);
+  if (!p || !p.year || !p.month || !p.day) return 0;
+  const d = new Date(`${p.year}-${p.month}-${p.day}T00:00:00`);
+  const t = d.getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+function parseDateTimeToEpoch(value) {
+  if (!value) return 0;
+  if (value instanceof Date && !Number.isNaN(value.valueOf())) return value.valueOf();
+  const text = String(value).trim();
+  if (!text) return 0;
+
+  const isoWithTime = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (isoWithTime) {
+    const [, y, m, d, hh, mm, ss] = isoWithTime;
+    const dt = new Date(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T${String(hh).padStart(2, "0")}:${mm}:${ss || "00"}`);
+    const t = dt.getTime();
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  const latamWithTime = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (latamWithTime) {
+    const [, d, m, yRaw, hh, mm, ss] = latamWithTime;
+    const y = yRaw.length === 2 ? `20${yRaw}` : yRaw;
+    const dt = new Date(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T${String(hh).padStart(2, "0")}:${mm}:${ss || "00"}`);
+    const t = dt.getTime();
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  const direct = Date.parse(text);
+  return Number.isFinite(direct) ? direct : 0;
+}
+
+function pickFirstValidDate(obj, keys) {
+  for (const key of keys) {
+    const raw = pick(obj, [key]);
+    if (raw === "" || raw === null || raw === undefined) continue;
+    const parsed = parseDateParts(raw);
+    if (parsed && parsed.year && parsed.month && parsed.day) {
+      return raw;
+    }
+  }
+  return pick(obj, keys);
 }
 
 function normalizarTurnoLabel(raw) {
