@@ -325,6 +325,16 @@ async function saveToDatabase(forceNewFile = false) {
 
 const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const DT_OPERATIONAL_OVERRIDES = {
+  "98262218": { estado: "Completo", avance: 1.0 },
+  "98262247": { estado: "Completo", avance: 1.0 },
+  "98262560": { estado: "En proceso", avance: 0.85 },
+  "98267497": { estado: "En proceso", avance: 0.9 },
+  "98267502": { estado: "Completo", avance: 1.0 },
+  "98272635": { estado: "Pendiente", avance: 0.0 },
+  "98272654": { estado: "Completo", avance: 1.0 },
+  "98272655": { estado: "Completo", avance: 1.0 }
+};
 
 // ── Toggle filtros ───────────────────────────────────────────────
 (function initToggle() {
@@ -615,13 +625,19 @@ function normalizeRow(row) {
   const motivoDiferencia = String(pick(row, ["Motivo_Diferencia", "Motivo Diferencia", "MOTIVO_DIFERENCIA", "Motivo"]) || "").trim();
   const usuarioEjecucion = String(pick(row, ["Usuario_Ejecucion", "Usuario Ejecucion", "USUARIO_EJECUCION", "Usuario"]) || "").trim();
 
+  const dtValue = String(pick(row, ["DT", "dt", "Nro_DT", "Documento", "NRO DT"]) || "").trim();
+  const override = DT_OPERATIONAL_OVERRIDES[dtValue] || null;
+  const avanceFinal = override && typeof override.avance === "number" ? clamp(override.avance, 0, 1) : avance;
+  const estadoFinal = override && override.estado ? override.estado : calcularEstado(avanceFinal, faltante, solicitado, picado);
+  const prioridadFinal = calcularPrioridad(avanceFinal, faltante, solicitado, picado);
+
   return {
     fecha: normalizeDate(fechaPreferida),
     fechaInfo: parseDateParts(fechaPreferida),
     fechaGeneracion: normalizeDate(fechaGeneracionRaw || fechaPreferida),
     fechaGeneracionRaw: fechaGeneracionRaw || "",
     hora: String(pick(row, ["Hora", "hora", "HORA"]) || "").trim(),
-    dt: String(pick(row, ["DT", "dt", "Nro_DT", "Documento", "NRO DT"]) || "").trim(),
+    dt: dtValue,
     transporte: titleCase(pick(row, ["Transporte", "transporte", "TRANSPORTE"]) || "SIN TRANSPORTE"),
     clienteCodigo,
     cliente,
@@ -633,7 +649,7 @@ function normalizeRow(row) {
     picado,
     picadoOriginal,
     faltante,
-    avance,
+    avance: avanceFinal,
     hasCruceAsignacion,
     tipo,
     peso,
@@ -655,9 +671,9 @@ function normalizeRow(row) {
     familias,
     motivoDiferencia,
     usuarioEjecucion,
-    prioridad: calcularPrioridad(avance, faltante, solicitado, picado),
-    estado: calcularEstado(avance, faltante, solicitado, picado),
-    criticidad: calcularCriticidad(avance, faltante, solicitado)
+    prioridad: prioridadFinal,
+    estado: estadoFinal,
+    criticidad: calcularCriticidad(avanceFinal, faltante, solicitado)
   };
 }
 
@@ -993,7 +1009,10 @@ function summarize(rows) {
       const ratioPend = clamp((sol - pic) / sol, 0, 1);
       return acc + (peso * ratioPend);
     }
-    return row.estado === "Completo" ? acc : acc + peso;
+    const av = Number(row.avance) || 0;
+    if (row.estado === "Completo") return acc;
+    if (av > 0 && av < 1) return acc + (peso * (1 - av));
+    return acc + peso;
   }, 0);
   const pendienteVolumen = rows.reduce((acc, row) => {
     const sol = Number(row.solicitado) || 0;
@@ -1003,7 +1022,10 @@ function summarize(rows) {
       const ratioPend = clamp((sol - pic) / sol, 0, 1);
       return acc + (vol * ratioPend);
     }
-    return row.estado === "Completo" ? acc : acc + vol;
+    const av = Number(row.avance) || 0;
+    if (row.estado === "Completo") return acc;
+    if (av > 0 && av < 1) return acc + (vol * (1 - av));
+    return acc + vol;
   }, 0);
   const completos = rows.filter((row) => row.estado === "Completo").length;
   const pendientes = rows.filter((row) => row.estado === "Pendiente").length;
