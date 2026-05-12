@@ -559,6 +559,15 @@ function normalizeRow(row) {
       "Cantidad UMS Asignada"
     ])
   );
+  const asignadoPicking = toNumber(
+    pick(row, [
+      "Und_Asignadas_Picking",
+      "Und Asignadas Picking",
+      "UND_ASIGNADAS_PICKING",
+      "UNIDADES ASIGNADAS PICKING",
+      "Cantidad UMS Asignada Picking"
+    ])
+  );
   const picadoOriginal = toNumber(pick(row, ["Und_Picadas", "Picado", "picado", "UND_PICADAS", "UNIDADES PICADAS", "Avance (Caj)", "Avance"]));
 
   // Guardarrail: si asignado viene inflado x10, no usarlo como base.
@@ -566,11 +575,13 @@ function normalizeRow(row) {
   const asignadoLooksX10 = refBase > 0 && asignadoDinet === refBase * 10;
   const assignedSafe = asignadoLooksX10 ? refBase : asignadoDinet;
 
-  // Base operativa: priorizar asignado DINET solo cuando es consistente.
-  const solicitado = assignedSafe > 0 ? assignedSafe : solicitadoOriginal;
-  const picado = picadoOriginal === 0 && assignedSafe > 0 ? assignedSafe : picadoOriginal;
+  // Base operativa: priorizar asignado DINET, luego asignado de picking.
+  const assignedBase = Math.max(assignedSafe, asignadoPicking);
+  const solicitado = assignedBase > 0 ? assignedBase : solicitadoOriginal;
+  const picado = picadoOriginal === 0 && assignedBase > 0 ? assignedBase : picadoOriginal;
   const avance = solicitado > 0 ? clamp(picado / solicitado, 0, 1) : 0;
   const faltante = Math.max(solicitado - picado, 0);
+  const hasCruceAsignacion = (asignadoDinet > 0) || (asignadoPicking > 0) || (solicitadoOriginal > 0) || (picadoOriginal > 0);
   const tipoDestino = String(pick(row, ["Tipo_Destino", "Tipo", "tipo", "TIPO_DESTINO", "TIPO DESTINO"]) || "").trim();
   const clienteCodigo = String(
     pick(row, ["Cod_Cliente_DINET", "Cod Cliente DINET", "Cod. Cliente", "Cod_Cliente", "COD_CLIENTE", "Codigo Cliente", "Codigo"])
@@ -618,10 +629,12 @@ function normalizeRow(row) {
     solicitado,
     solicitadoOriginal,
     asignadoDinet,
+    asignadoPicking,
     picado,
     picadoOriginal,
     faltante,
     avance,
+    hasCruceAsignacion,
     tipo,
     peso,
     volumen,
@@ -1345,7 +1358,7 @@ function renderTable(rows, summary) {
           <div class="pct-text">${fmtPct(row.avance)}</div>
           <div class="mini-bar"><div class="${barClass(row.avance)}" style="width:${Math.round(row.avance * 100)}%"></div></div>
         </td>
-        <td class="rampa-cell stage-editable" title="Clic para editar Stage" data-key="${escapeHtml(rowKey(row))}" data-fincarga="${escapeHtml(row.finCarga || '')}">${(() => { const sv = row.stageDestino.split(" / ")[0].split(",")[0].trim(); return sv ? escapeHtml(sv) : '<span class="stage-empty">+ Stage</span>'; })()}</td>
+        <td class="rampa-cell stage-editable" title="Clic para editar Stage" data-key="${escapeHtml(rowKey(row))}" data-fincarga="${escapeHtml(row.finCarga || '')}">${(() => { const sv = row.stageDestino.split(" / ")[0].split(",")[0].trim(); if (sv) return escapeHtml(sv); if (!row.hasCruceAsignacion) return '<span class="stage-empty">Sin cruce</span>'; return '<span class="stage-empty">+ Stage</span>'; })()}</td>
         <td class="rampa-cell">${escapeHtml(row.rampa)}</td>
         <td class="rampa-cell field-editable" title="Clic para editar Cita" data-key="${escapeHtml(rowKey(row))}" data-field="cita" data-rawval="${escapeHtml(row.cita)}">${row.cita ? escapeHtml(row.cita) : '<span class="stage-empty">+ Cita</span>'}</td>
         <td class="carga-td ${row.avance >= 1 ? 'carga-editable' : ''}" style="padding: 6px; ${row.avance >= 1 ? 'cursor:pointer;' : 'cursor:not-allowed;opacity:.75;'}" title="${row.avance >= 1 ? 'Clic para cambiar estado' : 'Solo editable cuando % avance es 100%'}" data-can-edit="${row.avance >= 1 ? '1' : '0'}" data-key="${escapeHtml(rowKey(row))}" data-estado="${escapeHtml(row.estadoCarga)}">${cargaIcon(row.estadoCarga)}</td>
