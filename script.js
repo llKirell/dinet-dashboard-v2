@@ -1,4 +1,4 @@
-let rawData = [];
+﻿let rawData = [];
 let processedData = [];
 let currentFilter = "TODOS";
 
@@ -325,6 +325,51 @@ async function saveToDatabase(forceNewFile = false) {
 
 const AUTO_DATA_PATHS = ["data/latest.xlsx", "./data/latest.xlsx"];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const API_BASE_STORAGE_KEY = "dinet_api_base_url_v1";
+
+function getStoredApiBaseUrl() {
+  try {
+    return localStorage.getItem(API_BASE_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function setStoredApiBaseUrl(value) {
+  try {
+    if (value) localStorage.setItem(API_BASE_STORAGE_KEY, value);
+    else localStorage.removeItem(API_BASE_STORAGE_KEY);
+  } catch {}
+}
+
+function normalizeApiEndpoint(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) return "";
+  if (/dashboard-rows(?:[/?#]|$)/i.test(value)) return value;
+
+  const base = value.replace(/\/+$/, "");
+  if (/\/api(?:\/v\d+)?$/i.test(base)) return `${base}/dashboard-rows`;
+  return `${base}/api/dashboard-rows`;
+}
+
+function buildApiDataPaths() {
+  const params = new URLSearchParams(window.location.search);
+  const queryApi = params.get("api") || "";
+  if (queryApi.trim()) setStoredApiBaseUrl(queryApi.trim());
+
+  const configuredApi = getStoredApiBaseUrl();
+  const metaApi = document.querySelector('meta[name="dinet-api-url"]')?.content || "";
+
+  return [...new Set([
+    normalizeApiEndpoint(queryApi),
+    normalizeApiEndpoint(configuredApi),
+    normalizeApiEndpoint(metaApi),
+    "/api/dashboard-rows",
+    "http://127.0.0.1:8000/api/dashboard-rows"
+  ].filter(Boolean))];
+}
+
+const API_DATA_PATHS = buildApiDataPaths();
 
 // ── Toggle filtros ───────────────────────────────────────────────
 (function initToggle() {
@@ -338,6 +383,19 @@ const AUTO_REFRESH_MS = 15 * 60 * 1000;
     label.textContent = hidden ? "Mostrar filtros" : "Ocultar filtros";
   });
 })();
+
+function initTableFullscreenToggle() {
+  const btn = document.getElementById("toggleTableFullscreenBtn");
+  const icon = document.getElementById("toggleTableFullscreenIcon");
+  const label = document.getElementById("toggleTableFullscreenLabel");
+  if (!btn || !icon || !label) return;
+
+  btn.addEventListener("click", () => {
+    const enabled = document.body.classList.toggle("table-fullscreen");
+    icon.textContent = enabled ? "▼" : "▲";
+    label.textContent = enabled ? "Vista normal" : "Expandir tabla";
+  });
+}
 let currentTableFilter = "TODOS";
 let dateFilter = { day: "TODOS", month: "TODOS", year: "TODOS" };
 const CLIENT_TYPE_CATALOG = window.CLIENT_TYPE_CATALOG || { codigos: {}, clientes: {}, destinos: {} };
@@ -419,7 +477,38 @@ async function loadHostedWorkbook() {
   return false;
 }
 
+async function loadRowsFromApi() {
+  for (const path of API_DATA_PATHS) {
+    try {
+      const response = await fetch(`${path}?v=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      if (!response.ok) continue;
+
+      const payload = await response.json();
+      const rows = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.rows)
+          ? payload.rows
+          : [];
+      if (!rows.length) continue;
+
+      loadRows(rows, "api", "dashboard_rows");
+      if (els.lastUpdateText) {
+        const src = payload?.source ? ` · ${payload.source}` : "";
+        els.lastUpdateText.textContent = `Actualizado: ${new Date().toLocaleString("es-PE")} (API${src})`;
+      }
+      return true;
+    } catch (_error) {
+      // probar siguiente endpoint
+    }
+  }
+  return false;
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
+  initTableFullscreenToggle();
   loadStageOverrides();
   initInlineStageEdit();
   initInlineCargaEdit();
@@ -439,8 +528,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  await loadHostedWorkbook();
-  window.setInterval(loadHostedWorkbook, AUTO_REFRESH_MS);
+  const fromApi = await loadRowsFromApi();
+  if (!fromApi) {
+    await loadHostedWorkbook();
+  }
+  window.setInterval(async () => {
+    const ok = await loadRowsFromApi();
+    if (!ok) await loadHostedWorkbook();
+  }, AUTO_REFRESH_MS);
 });
 
 async function handleExcelUpload(event) {
@@ -550,6 +645,7 @@ function normalizeRow(row) {
   // Prioridad de fecha real: generacion de picking > operativa > fecha general
   const fechaPreferida = fechaGeneracionRaw || fechaOperativaRaw || fechaFallbackRaw;
   const solicitadoOriginal = toNumber(pick(row, ["Und_Solicitadas", "Solicitado", "solicitado", "UND_SOLICITADAS", "UNIDADES SOLICITADAS", "Pedido (Caj)", "Pedido"]));
+  const solicitadoDb = toNumber(pick(row, ["unidades_solicitadas", "pedido", "solicitado_db"]));
   const asignadoDinet = toNumber(
     pick(row, [
       "Und_Asignadas_DINET",
@@ -569,42 +665,45 @@ function normalizeRow(row) {
     ])
   );
   const picadoOriginal = toNumber(pick(row, ["Und_Picadas", "Picado", "picado", "UND_PICADAS", "UNIDADES PICADAS", "Avance (Caj)", "Avance"]));
+  const picadoDb = toNumber(pick(row, ["unidades_picadas", "avance_cajas", "picado_db"]));
 
   // Guardarrail: si asignado viene inflado x10, no usarlo como base.
-  const refBase = Math.max(solicitadoOriginal, picadoOriginal);
+  const solicitadoRaw = Math.max(solicitadoOriginal, solicitadoDb);
+  const picadoRaw = Math.max(picadoOriginal, picadoDb);
+  const refBase = Math.max(solicitadoRaw, picadoRaw);
   const asignadoLooksX10 = refBase > 0 && asignadoDinet === refBase * 10;
   const assignedSafe = asignadoLooksX10 ? refBase : asignadoDinet;
 
   // Base operativa: priorizar asignado DINET, luego asignado de picking.
   const assignedBase = Math.max(assignedSafe, asignadoPicking);
-  const solicitado = assignedBase > 0 ? assignedBase : solicitadoOriginal;
-  const picado = picadoOriginal === 0 && assignedBase > 0 ? assignedBase : picadoOriginal;
+  const solicitado = assignedBase > 0 ? assignedBase : solicitadoRaw;
+  const picado = picadoRaw === 0 && assignedBase > 0 ? assignedBase : picadoRaw;
   const avance = solicitado > 0 ? clamp(picado / solicitado, 0, 1) : 0;
   const faltante = Math.max(solicitado - picado, 0);
   const hasCruceAsignacion = (asignadoDinet > 0) || (asignadoPicking > 0) || (solicitadoOriginal > 0) || (picadoOriginal > 0);
-  const tipoDestino = String(pick(row, ["Tipo_Destino", "Tipo", "tipo", "TIPO_DESTINO", "TIPO DESTINO"]) || "").trim();
+  const tipoDestino = String(pick(row, ["Tipo_Destino", "Tipo", "tipo", "TIPO_DESTINO", "TIPO DESTINO", "tipo_servicio"]) || "").trim();
   const clienteCodigo = String(
     pick(row, ["Cod_Cliente_DINET", "Cod Cliente DINET", "Cod. Cliente", "Cod_Cliente", "COD_CLIENTE", "Codigo Cliente", "Codigo"])
       || ""
   ).trim();
   const cliente = titleCase(
-    pick(row, ["Cliente_DINET", "Cliente DINET", "Cliente", "CLIENTE", "Razon Social", "Razón Social", "Nombre Cliente", "Desc Cliente"])
+    pick(row, ["Cliente_DINET", "Cliente DINET", "Cliente", "CLIENTE", "cliente", "Razon Social", "Razón Social", "Nombre Cliente", "Desc Cliente"])
       || "SIN CLIENTE"
   );
-  const destino = titleCase(pick(row, ["Destino", "destino", "DESTINO"]) || "SIN DESTINO");
+  const destino = titleCase(pick(row, ["Destino", "destino", "DESTINO", "destino_db"]) || "SIN DESTINO");
   const tipo = normalizarTipo(tipoDestino, destino, cliente, clienteCodigo);
-  const peso = toNumber(pick(row, ["Peso_Ton", "Peso", "PESO_TON", "peso", "PESO (Ton)", "Peso (Ton)"]));
-  const volumen = toNumber(pick(row, ["Volumen_m3", "Volumen", "VOLUMEN_M3", "m3", "VOL (m3)", "Vol (m3)", "VOL"]));
+  const peso = toNumber(pick(row, ["Peso_Ton", "Peso", "PESO_TON", "peso", "PESO (Ton)", "Peso (Ton)", "peso_total_dinet"]));
+  const volumen = toNumber(pick(row, ["Volumen_m3", "Volumen", "VOLUMEN_M3", "m3", "VOL (m3)", "Vol (m3)", "VOL", "volumen", "volumen_total_dinet"]));
   const horaLlegada = String(pick(row, ["Hora_Llegada", "Hora Llegada", "HORA LLEGADA", "HoraLlegada", "Hora llegada", "HORA_LLEGADA", "Hora", "hora", "HORA"]) || "").trim();
   const placa = String(pick(row, ["Placa", "PLACA", "placa", "PLACA CAMION", "Placa Camion"]) || "").trim().toUpperCase();
-  const rampa = String(pick(row, ["Rampa", "RAMPA", "RAMPAS", "rampas", "Rampas"]) || "").trim();
+  const rampa = String(pick(row, ["Rampa", "RAMPA", "RAMPAS", "rampas", "Rampas", "rampa"]) || "").trim();
   const finCarga = String(pick(row, ["Fin_Carga", "Fin Carga", "FIN_CARGA", "fin_carga"]) || "").trim();
   const estadoCargaRaw = String(pick(row, ["Estado_Carga", "Estado Carga", "ESTADO_CARGA", "Carga", "CARGA"]) || "").trim();
   const estadoCarga = deriveEstadoCarga(finCarga, rampa, estadoCargaRaw);
   const observaciones = String(pick(row, ["Observaciones", "OBSERVACIONES", "Obs", "OBS", "Observacion"]) || "").trim();
   const tipoCliente = titleCase(String(pick(row, ["Tipo_Cliente", "Tipo Cliente", "TIPO_CLIENTE", "TIPO CLIENTE", "TipoCliente"]) || "").trim());
   const filtrador = String(pick(row, ["Filtrador", "FILTRADOR", "filtrador"]) || "").trim();
-  const stageDestino = String(pick(row, ["Stage_Destino", "Stage Destino", "STAGE_DESTINO", "Stage"]) || "").trim();
+  const stageDestino = String(pick(row, ["Stage_Destino", "Stage Destino", "STAGE_DESTINO", "Stage", "stage"]) || "").trim();
   const inicioPicking = String(pick(row, ["Inicio_Picking", "Inicio Picking", "INICIO_PICKING"]) || "").trim();
   const finPicking = String(pick(row, ["Fin_Picking", "Fin Picking", "FIN_PICKING"]) || "").trim();
   // Usamos la hora en la que finalizó la tarea. Si está vacía, usamos la hora de llegada por defecto.
@@ -1426,16 +1525,16 @@ function renderTurnoCombinadoBars(rows) {
     ? grouped.map((item) => {
         const ratio = totalPicado > 0 ? clamp(item.picado / totalPicado, 0, 1) : 0;
         return `
-          <div style="margin-bottom: 16px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px; flex-wrap:wrap;">
-              <div class="bar-lbl" style="text-align:left; font-size:12.5px;">${escapeHtml(item.name)}</div>
-              <div style="font-size:10.5px; color:#64748b; display:flex; gap:12px;">
-                <span><strong style="color:#0f172a">${fmtDec(item.peso)}</strong> Ton</span>
-                <span><strong style="color:#0f172a">${fmtDec(item.volumen)}</strong> m³</span>
-                <span><strong style="color:#0f172a">${fmtNum(item.picado)}</strong> Cjs</span>
+          <div class="turno-row">
+            <div class="turno-row-head">
+              <div class="turno-name">${escapeHtml(item.name)}</div>
+              <div class="turno-values">
+                <span><strong>${fmtDec(item.peso)}</strong> Ton</span>
+                <span><strong>${fmtDec(item.volumen)}</strong> m³</span>
+                <span><strong>${fmtNum(item.picado)}</strong> Cjs</span>
               </div>
             </div>
-            <div class="bar-track">
+            <div class="bar-track turno-bar-track">
               <div class="bar-fill ${barClass(ratio)}" style="width:${Math.round(ratio * 100)}%">${Math.round(ratio * 100)}%</div>
             </div>
           </div>
@@ -1527,3 +1626,4 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+

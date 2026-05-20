@@ -1,4 +1,4 @@
-/*  */* {
+﻿/*  */* {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -1602,3 +1602,203 @@ td { padding: 10px 8px !important; font-size: 11px !important; }
     font-size: 11px !important;
   }
 }
+
+/* ── Toggle vista Detalle Dts ─────────────────────────────────── */
+.table-view-actions { display: inline-flex; align-items: center; margin-right: 8px; }
+#toggleTableFullscreenBtn { padding: 7px 12px; font-size: 11px; }
+#toggleTableFullscreenIcon { font-size: 11px; font-weight: 900; line-height: 1; }
+
+/* ── Modo tabla completa ───────────────────────────────────────── */
+body.table-fullscreen .ops-section {
+  display: none !important;
+}
+
+body.table-fullscreen #dashboardContent.page.active {
+  display: grid;
+  grid-template-rows: 1fr;
+  height: calc(100vh - 118px);
+}
+
+body.table-fullscreen .main-grid,
+body.table-fullscreen .main-grid .panel {
+  height: 100%;
+  min-height: 0;
+}
+
+body.table-fullscreen .main-grid .panel {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px !important;
+}
+
+body.table-fullscreen .main-grid .panel .table-wrap {
+  flex: 1;
+  min-height: 0;
+  max-height: none !important;
+  height: 100%;
+}
+
+/* ── Tabla compacta legible ───────────────────────────────────── */
+.main-grid .panel .panel-title-row {
+  margin-bottom: 8px !important;
+  padding-bottom: 7px !important;
+}
+
+.main-grid .panel th {
+  padding: 6px 7px !important;
+  font-size: 8px !important;
+  letter-spacing: 0.9px !important;
+}
+
+.main-grid .panel td {
+  padding: 6px 7px !important;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+.main-grid .panel .dt-cell {
+  font-size: 10px !important;
+}
+
+.main-grid .panel .pct-text {
+  font-size: 10px !important;
+  margin-bottom: 2px !important;
+}
+
+.main-grid .panel .mini-bar {
+  height: 5px !important;
+}
+
+body.table-fullscreen .main-grid .panel th {
+  padding: 5px 6px !important;
+  font-size: 7.5px !important;
+}
+
+body.table-fullscreen .main-grid .panel td {
+  padding: 5px 6px !important;
+  font-size: 9.4px !important;
+  line-height: 1.05 !important;
+}
+
+body.table-fullscreen .main-grid .panel .dt-cell {
+  font-size: 9.6px !important;
+}
+
+.turno-row {
+  margin-bottom: 10px;
+}
+
+.turno-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 4px;
+  gap: 10px;
+}
+
+.turno-name {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #5f7391;
+}
+
+.turno-values {
+  font-size: 10px;
+  color: #6f8098;
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.turno-values strong {
+  color: #111827;
+  font-weight: 800;
+}
+
+.turno-bar-track {
+  height: 12px !important;
+}
+
+/* ── Compactación suave desktop (sin distorsión) ───────────────── */
+@media (min-width: 1280px) {
+  .header {
+    height: 64px;
+    padding: 0 30px;
+  }
+
+  .tabs {
+    padding-top: 8px;
+  }
+
+  .filter-bar {
+    padding: 6px 36px 10px;
+  }
+
+  .dashboard-wrap {
+    padding: 10px 14px 16px !important;
+  }
+
+  .ops-section {
+    gap: 8px !important;
+  }
+
+  .gauge-panel {
+    padding: 12px 10px 10px !important;
+  }
+
+  .gauge-panel svg {
+    max-height: 196px;
+  }
+
+  .summary-strip {
+    padding: 12px 14px !important;
+  }
+
+  .summary-row {
+    padding: 6px 0 !important;
+  }
+
+  .panel-sm {
+    padding: 11px 12px !important;
+  }
+
+  .panel-sm .panel-title {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+    letter-spacing: 1px !important;
+    text-transform: uppercase !important;
+    color: #8fa1bc !important;
+  }
+
+  .panel-sm .panel-sub {
+    font-size: 10px !important;
+    color: #8fa1bc !important;
+  }
+
+  .panel-sm .bar-row {
+    margin-bottom: 7px !important;
+  }
+
+  .main-grid .panel {
+    padding: 12px 12px 10px !important;
+  }
+
+  .main-grid .panel .panel-title-row {
+    margin-bottom: 10px !important;
+    padding-bottom: 9px !important;
+  }
+
+  .main-grid .panel th {
+    padding: 7px 8px !important;
+    font-size: 8.5px !important;
+  }
+
+  .main-grid .panel td {
+    padding: 8px 8px !important;
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+  }
+}
+

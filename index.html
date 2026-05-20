@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -96,6 +96,12 @@
               <div id="tableTitle" class="panel-title">Detalle Dts</div>
               <div id="tableSubtitle" class="panel-sub"></div>
             </div>
+            <div class="table-view-actions">
+              <button id="toggleTableFullscreenBtn" type="button" class="pill pill-toggle" title="Expandir o contraer Detalle Dts">
+                <span id="toggleTableFullscreenIcon">▲</span>
+                <span id="toggleTableFullscreenLabel">Expandir tabla</span>
+              </button>
+            </div>
             <div class="tabs" style="padding: 0; gap: 8px; overflow: visible; flex-wrap: wrap;">
               <button class="tab t-tab active" data-estado="TODOS" type="button" style="padding: 8px 12px; font-size: 0.75rem;"><span class="tab-dot blue"></span>TODOS <span id="tTabCountTodos" class="badge b-blue">0</span></button>
               <button class="tab t-tab" data-estado="Completo" type="button" style="padding: 8px 12px; font-size: 0.75rem;"><span class="tab-dot green"></span>COMPLETO <span id="tTabCountCompleto" class="badge b-green">0</span></button>
@@ -136,3 +142,4 @@
   <script src="script.js"></script>
 </body>
 </html>
+
