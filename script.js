@@ -355,17 +355,20 @@ function normalizeApiEndpoint(rawValue) {
 function buildApiDataPaths() {
   const params = new URLSearchParams(window.location.search);
   const queryApi = params.get("api") || "";
-  if (queryApi.trim()) setStoredApiBaseUrl(queryApi.trim());
-
-  const configuredApi = getStoredApiBaseUrl();
   const metaApi = document.querySelector('meta[name="dinet-api-url"]')?.content || "";
+  const hasExplicitApi = Boolean(queryApi.trim() || metaApi.trim());
+
+  // Mantener base oficial del dashboard (latest.xlsx) por defecto.
+  // Solo habilitar endpoints API cuando se indiquen de forma explicita.
+  if (!hasExplicitApi) return [];
+
+  if (queryApi.trim()) setStoredApiBaseUrl(queryApi.trim());
+  const configuredApi = getStoredApiBaseUrl();
 
   return [...new Set([
     normalizeApiEndpoint(queryApi),
     normalizeApiEndpoint(configuredApi),
-    normalizeApiEndpoint(metaApi),
-    "/api/dashboard-rows",
-    "http://127.0.0.1:8000/api/dashboard-rows"
+    normalizeApiEndpoint(metaApi)
   ].filter(Boolean))];
 }
 
@@ -528,13 +531,12 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  const fromApi = await loadRowsFromApi();
-  if (!fromApi) {
-    await loadHostedWorkbook();
-  }
+  const fromWorkbook = await loadHostedWorkbook();
+  if (!fromWorkbook) await loadRowsFromApi();
+
   window.setInterval(async () => {
-    const ok = await loadRowsFromApi();
-    if (!ok) await loadHostedWorkbook();
+    const okWorkbook = await loadHostedWorkbook();
+    if (!okWorkbook) await loadRowsFromApi();
   }, AUTO_REFRESH_MS);
 });
 
