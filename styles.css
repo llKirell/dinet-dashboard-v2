@@ -1129,36 +1129,36 @@ tr { transition: transform 0.2s; }
 .insight-title { font-size: 11px; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; color: #64748b; margin-bottom: 5px; }
 .insight-text { font-size: 12px; color: #334155; line-height: 1.45; }
 .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.bar-row { display: grid; grid-template-columns: 82px 1fr 44px; gap: 10px; align-items: center; margin-bottom: 11px; }
-.bar-lbl { font-size: 11px; color: #475569; font-weight: 800; text-align: right; }
-.bar-track { height: 24px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
-.bar-fill { height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 9px; color: white; font-size: 11px; font-weight: 900; border-radius: 999px; white-space: nowrap; }
-.bar-pct { font-size: 11px; font-weight: 900; }
+.bar-row { display: grid; grid-template-columns: 80px 1fr 42px; gap: 9px; align-items: center; margin-bottom: 7px; }
+.bar-lbl { font-size: 10px; color: #475569; font-weight: 800; text-align: right; }
+.bar-track { height: 20px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; color: white; font-size: 10px; font-weight: 900; border-radius: 999px; white-space: nowrap; }
+.bar-pct { font-size: 10px; font-weight: 900; }
 .search-box { padding: 8px 16px 8px 34px; border-radius: 999px; border: 1px solid #e2e8f0; font-size: 12px; outline: none; transition: all 0.3s; width: 200px; font-family: inherit; background: #f8fafc url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>') no-repeat 12px center; }
 .search-box:focus { border-color: #1d4ed8; box-shadow: 0 0 0 3px rgba(29,78,216,.15); width: 260px; background-color: #fff; }
-.ops-section { display: flex; gap: 10px; align-items: stretch; }
+.ops-section { display: flex; gap: 8px; align-items: stretch; }
 .ops-gauge { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .ops-gauge .gauge-title { width: 100%; text-align: center; flex-shrink: 0; }
 .ops-gauge svg { flex: 1 1 0; min-height: 0; width: 100%; height: 100%; }
-.ops-center { flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.ops-center { flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .ops-center #gaugeSummaryWrap { flex: 0 0 auto; }
 .ops-center .panel-sm { flex: 1 1 auto; }
-.panel-sm { padding: 14px 16px !important; }
-.panel-sm .panel-title { font-size: 12px; }
+.panel-sm { padding: 10px 12px !important; }
+.panel-sm .panel-title { font-size: 11px; }
 .panel-sm .panel-sub { font-size: 10px; }
-.panel-sm .bar-row { margin-bottom: 8px; }
-.gauge-panel { background: #fff; border-radius: 20px; padding: 18px 14px 14px; box-shadow: 0 4px 15px -3px rgba(15,23,42,.05), 0 0 0 1px rgba(15,23,42,.03); text-align: center; }
-.gauge-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.4px; color: #64748b; margin-bottom: 6px; }
-.summary-strip { background: #fff; border-radius: 20px; padding: 18px 20px; box-shadow: 0 4px 15px -3px rgba(15,23,42,.05), 0 0 0 1px rgba(15,23,42,.03); }
-.summary-strip-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.4px; color: #94a3b8; margin-bottom: 10px; }
+.panel-sm .bar-row { margin-bottom: 6px; }
+.gauge-panel { background: #fff; border-radius: 20px; padding: 12px 10px 10px; box-shadow: 0 4px 15px -3px rgba(15,23,42,.05), 0 0 0 1px rgba(15,23,42,.03); text-align: center; }
+.gauge-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.2px; color: #64748b; margin-bottom: 4px; }
+.summary-strip { background: #fff; border-radius: 20px; padding: 12px 14px; box-shadow: 0 4px 15px -3px rgba(15,23,42,.05), 0 0 0 1px rgba(15,23,42,.03); }
+.summary-strip-title { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; margin-bottom: 6px; }
 .summary-header { display: grid; grid-template-columns: 1.6fr repeat(3, 1fr); gap: 6px; margin-bottom: 4px; }
 .summary-col-head { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; text-align: right; }
-.summary-row { display: grid; grid-template-columns: 1.6fr repeat(3, 1fr); gap: 6px; padding: 7px 0; border-top: 1px solid #f1f5f9; align-items: center; }
+.summary-row { display: grid; grid-template-columns: 1.6fr repeat(3, 1fr); gap: 6px; padding: 5px 0; border-top: 1px solid #f1f5f9; align-items: center; }
 .summary-row-total { border-top: 2px solid #e2e8f0; margin-top: 2px; }
 .summary-row-total .summary-row-label { font-weight: 900; color: #0f172a; }
 .summary-row-total .summary-cell { font-weight: 900; color: #0f172a; }
-.summary-row-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #64748b; }
-.summary-cell { font-size: 12px; font-weight: 800; text-align: right; }
+.summary-row-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .35px; color: #64748b; }
+.summary-cell { font-size: 11px; font-weight: 800; text-align: right; }
 .carga-legend { display: flex; align-items: center; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #f1f5f9; font-size: 10px; color: #64748b; flex-wrap: wrap; }
 .carga-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 900; flex-shrink: 0; }
 .carga-ok { background: #f0fdf4; color: #15803d; }
@@ -1171,7 +1171,7 @@ tr { transition: transform 0.2s; }
 .estado-grafico.ok { color: #15803d; }
 .estado-grafico.warn { color: #d97706; }
 .estado-grafico.pend { color: #dc2626; }
-.table-wrap { overflow-x: auto; border-radius: 8px; max-height: 500px; overflow-y: auto; }
+.table-wrap { overflow-x: auto; border-radius: 8px; max-height: 640px; overflow-y: auto; }
 .dt-cell { font-weight: 900; font-size: 11px; white-space: nowrap; color: #1d4ed8; }
 .placa-cell { font-size: 11px; font-weight: 700; white-space: nowrap; color: #475569; }
 .rampa-cell { font-size: 11px; white-space: nowrap; color: #64748b; }
