@@ -1,6 +1,7 @@
 ﻿let rawData = [];
 let processedData = [];
 let currentFilter = "TODOS";
+const TABLE_FILTER_WORK = "POR_TRABAJAR";
 
 // ── Edición inline de Stage / Estado Carga ───────────────────────────
 let stageOverrides = {};
@@ -428,6 +429,7 @@ const els = {
   tTabCountCompleto: document.getElementById("tTabCountCompleto"),
   tTabCountProceso: document.getElementById("tTabCountProceso"),
   tTabCountPendiente: document.getElementById("tTabCountPendiente"),
+  tTabCountPorTrabajar: document.getElementById("tTabCountPorTrabajar"),
   tabCountTodos: document.getElementById("tabCountTodos"),
   tabCountLocal: document.getElementById("tabCountLocal"),
   tabCountProvincia: document.getElementById("tabCountProvincia")
@@ -600,8 +602,8 @@ function loadRows(rows, fileName, sheetName) {
   processedData = dedupeRowsByDt(normalizedRows);
   dateFilter = { day: "TODOS", month: "TODOS", year: "TODOS" };
 
-  currentFilter = chooseDefaultFilter();
-  currentTableFilter = "TODOS";
+  currentFilter = "TODOS";
+  currentTableFilter = TABLE_FILTER_WORK;
   syncActiveTab();
   syncActiveTableTab();
   populateDateFilters();
@@ -1442,12 +1444,17 @@ function summaryStripHtml(summary) {
 /* ─── TABLE ─────────────────────────────────────────────────────── */
 
 function renderTable(rows, summary) {
-  const tableRows = currentTableFilter === "TODOS" ? rows : rows.filter(r => r.estado === currentTableFilter);
+  const tableRows = currentTableFilter === "TODOS"
+    ? rows
+    : currentTableFilter === TABLE_FILTER_WORK
+      ? rows.filter((r) => r.estado === "En proceso" || r.estado === "Pendiente")
+      : rows.filter((r) => r.estado === currentTableFilter);
 
   if (els.tTabCountTodos) els.tTabCountTodos.textContent = rows.length;
   if (els.tTabCountCompleto) els.tTabCountCompleto.textContent = rows.filter(r => r.estado === "Completo").length;
   if (els.tTabCountProceso) els.tTabCountProceso.textContent = rows.filter(r => r.estado === "En proceso").length;
   if (els.tTabCountPendiente) els.tTabCountPendiente.textContent = rows.filter(r => r.estado === "Pendiente").length;
+  if (els.tTabCountPorTrabajar) els.tTabCountPorTrabajar.textContent = rows.filter((r) => r.estado === "En proceso" || r.estado === "Pendiente").length;
 
   const ordered = [...tableRows].sort(compareCritical);
   els.tableTitle.textContent = "Detalle Dts";
