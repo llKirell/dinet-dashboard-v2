@@ -646,8 +646,12 @@ function normalizeRow(row) {
   ]);
   const fechaOperativaRaw = pickFirstValidDate(row, ["Fecha_Operativa", "Fecha Operativa", "FECHA_OPERATIVA"]);
   const fechaFallbackRaw = pickFirstValidDate(row, ["Fecha", "fecha", "FECHA"]);
-  // Prioridad de fecha real: generacion de picking > operativa > fecha general
-  const fechaPreferida = fechaGeneracionRaw || fechaOperativaRaw || fechaFallbackRaw;
+  const finPicking = String(pick(row, ["Fin_Picking", "Fin Picking", "FIN_PICKING"]) || "").trim();
+  // Fecha base operativa: prioridad a fecha de carpeta/operativa.
+  // Regla de cruce: si termina entre 00:00 y 06:59 del dia siguiente, se mantiene en fecha base.
+  // Si termina desde 07:00 del dia siguiente, pasa al dia siguiente.
+  const fechaBaseOperativa = fechaOperativaRaw || fechaGeneracionRaw || fechaFallbackRaw;
+  const fechaPreferida = computeOperationalDate(fechaBaseOperativa, finPicking);
   const solicitadoOriginal = toNumber(pick(row, ["Und_Solicitadas", "Solicitado", "solicitado", "UND_SOLICITADAS", "UNIDADES SOLICITADAS", "Pedido (Caj)", "Pedido"]));
   const solicitadoDb = toNumber(pick(row, ["unidades_solicitadas", "pedido", "solicitado_db"]));
   const asignadoDinet = toNumber(
@@ -709,7 +713,6 @@ function normalizeRow(row) {
   const filtrador = String(pick(row, ["Filtrador", "FILTRADOR", "filtrador"]) || "").trim();
   const stageDestino = String(pick(row, ["Stage_Destino", "Stage Destino", "STAGE_DESTINO", "Stage", "stage"]) || "").trim();
   const inicioPicking = String(pick(row, ["Inicio_Picking", "Inicio Picking", "INICIO_PICKING"]) || "").trim();
-  const finPicking = String(pick(row, ["Fin_Picking", "Fin Picking", "FIN_PICKING"]) || "").trim();
   // Usamos la hora en la que finalizó la tarea. Si está vacía, usamos la hora de llegada por defecto.
   const turno = deriveTurno(String(pick(row, ["Turno", "turno", "TURNO"]) || "").trim(), finPicking || horaLlegada);
   const tiempoPicking = String(pick(row, ["Tiempo_Picking", "Tiempo Picking", "TIEMPO_PICKING"]) || "").trim();
@@ -875,12 +878,11 @@ function normalizarTurnoLabel(raw) {
 }
 
 function deriveTurno(turnoExcel, horaStr) {
-  // Primero intenta normalizar el valor del Excel
-  const fromExcel = normalizarTurnoLabel(turnoExcel);
-  if (fromExcel) return fromExcel;
-
-  // Si no hay valor Excel, inferir por hora
-  if (!horaStr) return "SIN TURNO";
+  // Regla operativa: priorizar hora final real (Tareas). Si no hay, fallback al turno del Excel.
+  if (!horaStr) {
+    const fromExcel = normalizarTurnoLabel(turnoExcel);
+    return fromExcel || "SIN TURNO";
+  }
   let h = -1;
   const timeMatch = horaStr.match(/(\d{1,2}):\d{2}/);
   if (timeMatch) {
@@ -894,6 +896,46 @@ function deriveTurno(turnoExcel, horaStr) {
   if (h >= 7 && h < 15) return "1 TURNO";
   if (h >= 15 && h < 23) return "2 TURNO";
   return "3 TURNO";
+}
+
+function computeOperationalDate(baseDateRaw, finPickingRaw) {
+  const base = parseDateParts(baseDateRaw);
+  if (!base || !base.year || !base.month || !base.day) {
+    return normalizeDate(baseDateRaw);
+  }
+
+  const baseDate = new Date(`${base.year}-${base.month}-${base.day}T00:00:00`);
+  const basePlusOne = new Date(baseDate);
+  basePlusOne.setDate(baseDate.getDate() + 1);
+
+  const finEpoch = parseDateTimeToEpoch(finPickingRaw);
+  if (!finEpoch) return `${base.day}/${base.month}/${base.year}`;
+
+  const finDate = new Date(finEpoch);
+  const finY = String(finDate.getFullYear());
+  const finM = String(finDate.getMonth() + 1).padStart(2, "0");
+  const finD = String(finDate.getDate()).padStart(2, "0");
+  const finHour = finDate.getHours();
+
+  const basePlusOneY = String(basePlusOne.getFullYear());
+  const basePlusOneM = String(basePlusOne.getMonth() + 1).padStart(2, "0");
+  const basePlusOneD = String(basePlusOne.getDate()).padStart(2, "0");
+
+  // Caso principal solicitado:
+  // - 00:00-06:59 del dia siguiente => mantener fecha de carpeta
+  // - 07:00+ del dia siguiente => mover al dia siguiente
+  if (finY === basePlusOneY && finM === basePlusOneM && finD === basePlusOneD) {
+    if (finHour < 7) return `${base.day}/${base.month}/${base.year}`;
+    return `${basePlusOneD}/${basePlusOneM}/${basePlusOneY}`;
+  }
+
+  // Si termina el mismo dia base, mantener base.
+  if (finY === base.year && finM === base.month && finD === base.day) {
+    return `${base.day}/${base.month}/${base.year}`;
+  }
+
+  // Fallback: usar fecha real de fin para no perder trazabilidad.
+  return `${finD}/${finM}/${finY}`;
 }
 
 function normalizarEstadoCarga(raw) {
@@ -1202,16 +1244,26 @@ function populateDateFilters() {
   const defaultMonth = String(today.getMonth() + 1).padStart(2, "0");
   const defaultYear = String(today.getFullYear());
 
-  fillSelect(els.dayFilter, days, (value) => value, defaultDay, true);
-  fillSelect(els.monthFilter, months, (value) => monthName(value), defaultMonth, true);
-  fillSelect(els.yearFilter, years, (value) => value, defaultYear, true);
+  fillSelect(els.dayFilter, days, (value) => value, defaultDay, false);
+  fillSelect(els.monthFilter, months, (value) => monthName(value), defaultMonth, false);
+  fillSelect(els.yearFilter, years, (value) => value, defaultYear, false);
 
-  // Actualizar dateFilter con la fecha de hoy por defecto
+  const hasToday =
+    days.includes(defaultDay) &&
+    months.includes(defaultMonth) &&
+    years.includes(defaultYear);
+  const latestAvailable = getLatestAvailableDateParts();
+
+  // Si no hay data real para hoy, usar la última fecha disponible del dataset.
   dateFilter = {
-    day: defaultDay,
-    month: defaultMonth,
-    year: defaultYear
+    day: hasToday ? defaultDay : latestAvailable.day,
+    month: hasToday ? defaultMonth : latestAvailable.month,
+    year: hasToday ? defaultYear : latestAvailable.year
   };
+
+  if (els.dayFilter) els.dayFilter.value = dateFilter.day || "TODOS";
+  if (els.monthFilter) els.monthFilter.value = dateFilter.month || "TODOS";
+  if (els.yearFilter) els.yearFilter.value = dateFilter.year || "TODOS";
 }
 
 function fillSelect(select, values, formatter, defaultValue, ensureDefaultOption = false) {
@@ -1235,6 +1287,24 @@ function fillSelect(select, values, formatter, defaultValue, ensureDefaultOption
 function uniqueSortedValues(values, direction) {
   const unique = [...new Set(values)];
   return unique.sort((a, b) => (direction === "desc" ? b.localeCompare(a) : a.localeCompare(b)));
+}
+
+function getLatestAvailableDateParts() {
+  const valid = processedData
+    .map((row) => row.fechaInfo)
+    .filter((info) => info && info.year && info.month && info.day)
+    .map((info) => ({
+      day: info.day,
+      month: info.month,
+      year: info.year,
+      stamp: `${info.year}-${info.month}-${info.day}`
+    }))
+    .sort((a, b) => b.stamp.localeCompare(a.stamp));
+
+  if (!valid.length) {
+    return { day: "TODOS", month: "TODOS", year: "TODOS" };
+  }
+  return { day: valid[0].day, month: valid[0].month, year: valid[0].year };
 }
 
 function monthName(value) {
