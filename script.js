@@ -1231,6 +1231,7 @@ function handleDateFilterChange() {
     month: els.monthFilter.value,
     year: els.yearFilter.value
   };
+  applyAutomaticTableFilterByDate();
   render();
 }
 
@@ -1243,27 +1244,38 @@ function populateDateFilters() {
   const defaultDay = String(today.getDate()).padStart(2, "0");
   const defaultMonth = String(today.getMonth() + 1).padStart(2, "0");
   const defaultYear = String(today.getFullYear());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayDay = String(yesterday.getDate()).padStart(2, "0");
+  const yesterdayMonth = String(yesterday.getMonth() + 1).padStart(2, "0");
+  const yesterdayYear = String(yesterday.getFullYear());
 
   fillSelect(els.dayFilter, days, (value) => value, defaultDay, false);
   fillSelect(els.monthFilter, months, (value) => monthName(value), defaultMonth, false);
   fillSelect(els.yearFilter, years, (value) => value, defaultYear, false);
 
-  const hasToday =
-    days.includes(defaultDay) &&
-    months.includes(defaultMonth) &&
-    years.includes(defaultYear);
+  const hasToday = hasDataForDate(defaultDay, defaultMonth, defaultYear);
+  const hasYesterday = hasDataForDate(yesterdayDay, yesterdayMonth, yesterdayYear);
   const latestAvailable = getLatestAvailableDateParts();
 
-  // Si no hay data real para hoy, usar la última fecha disponible del dataset.
+  // Regla:
+  // - Si hoy no tiene carpeta/data real, abrir en ayer.
+  // - Si tampoco hay ayer, caer a la última fecha con data real.
+  const preferred = hasToday
+    ? { day: defaultDay, month: defaultMonth, year: defaultYear }
+    : hasYesterday
+      ? { day: yesterdayDay, month: yesterdayMonth, year: yesterdayYear }
+      : latestAvailable;
+
   dateFilter = {
-    day: hasToday ? defaultDay : latestAvailable.day,
-    month: hasToday ? defaultMonth : latestAvailable.month,
-    year: hasToday ? defaultYear : latestAvailable.year
+    day: preferred.day,
+    month: preferred.month,
+    year: preferred.year
   };
 
   if (els.dayFilter) els.dayFilter.value = dateFilter.day || "TODOS";
   if (els.monthFilter) els.monthFilter.value = dateFilter.month || "TODOS";
   if (els.yearFilter) els.yearFilter.value = dateFilter.year || "TODOS";
+  applyAutomaticTableFilterByDate();
 }
 
 function fillSelect(select, values, formatter, defaultValue, ensureDefaultOption = false) {
@@ -1305,6 +1317,47 @@ function getLatestAvailableDateParts() {
     return { day: "TODOS", month: "TODOS", year: "TODOS" };
   }
   return { day: valid[0].day, month: valid[0].month, year: valid[0].year };
+}
+
+function hasDataForDate(day, month, year) {
+  if (!day || !month || !year) return false;
+  return processedData.some(
+    (row) => row.fechaInfo.day === day && row.fechaInfo.month === month && row.fechaInfo.year === year
+  );
+}
+
+function isTodaySelected() {
+  const now = new Date();
+  const d = String(now.getDate()).padStart(2, "0");
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const y = String(now.getFullYear());
+  return dateFilter.day === d && dateFilter.month === m && dateFilter.year === y;
+}
+
+function rowsForSelectedDate() {
+  if (!dateFilter.day || !dateFilter.month || !dateFilter.year || dateFilter.day === "TODOS" || dateFilter.month === "TODOS" || dateFilter.year === "TODOS") {
+    return [];
+  }
+  return processedData.filter(
+    (row) => row.fechaInfo.day === dateFilter.day && row.fechaInfo.month === dateFilter.month && row.fechaInfo.year === dateFilter.year
+  );
+}
+
+function applyAutomaticTableFilterByDate() {
+  const selectedRows = rowsForSelectedDate();
+  if (!selectedRows.length) {
+    currentTableFilter = "TODOS";
+    syncActiveTableTab();
+    return;
+  }
+
+  if (isTodaySelected()) {
+    const allComplete = selectedRows.every((r) => r.estado === "COMPLETO");
+    currentTableFilter = allComplete ? "TODOS" : TABLE_FILTER_WORK;
+  } else {
+    currentTableFilter = "TODOS";
+  }
+  syncActiveTableTab();
 }
 
 function monthName(value) {
