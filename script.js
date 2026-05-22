@@ -1352,7 +1352,7 @@ function applyAutomaticTableFilterByDate() {
   }
 
   if (isTodaySelected()) {
-    const allComplete = selectedRows.every((r) => r.estado === "COMPLETO");
+    const allComplete = selectedRows.every((r) => String(r.estado || "").toUpperCase() === "COMPLETO");
     currentTableFilter = allComplete ? "TODOS" : TABLE_FILTER_WORK;
   } else {
     currentTableFilter = "TODOS";
